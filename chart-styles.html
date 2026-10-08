@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyDiary · 折线图风格选择</title>
+<style>
+  :root {
+    --ink: #1C1B18;
+    --paper: #F4F1EA;
+    --card: #FFFFFF;
+    --muted: #8A8578;
+    --line: #E4DFD3;
+    --sel: #B4552D;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background:
+      radial-gradient(1200px 500px at 80% -10%, rgba(180,85,45,0.06), transparent 60%),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Source Han Sans SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    padding: 48px 24px 120px;
+  }
+  header { max-width: 1060px; margin: 0 auto 40px; }
+  .kicker {
+    font-size: 11px; letter-spacing: 0.32em; color: var(--muted);
+    text-transform: uppercase; margin-bottom: 14px;
+  }
+  h1 {
+    font-family: Georgia, "Songti SC", "SimSun", serif;
+    font-weight: 700; font-size: 34px; letter-spacing: 0.02em;
+  }
+  h1 em { font-style: normal; color: var(--sel); }
+  .sub { margin-top: 10px; font-size: 13px; color: var(--muted); line-height: 1.7; max-width: 620px; }
+
+  .gallery { max-width: 1060px; margin: 0 auto; display: grid; gap: 26px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    position: relative;
+    transition: box-shadow .25s ease, border-color .25s ease, transform .25s ease;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 14px 40px rgba(28,27,24,0.10); }
+  .card.sel { border-color: var(--sel); box-shadow: 0 0 0 2px var(--sel), 0 14px 40px rgba(180,85,45,0.14); }
+  .card-head {
+    display: flex; align-items: baseline; gap: 14px;
+    padding: 18px 24px 0;
+  }
+  .tag {
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 11px; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px;
+  }
+  .card.sel .tag { color: var(--sel); border-color: var(--sel); }
+  .card-title { font-size: 15px; font-weight: 700; letter-spacing: 0.04em; }
+  .card-desc { margin-left: auto; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.5; }
+  .chart-wrap { padding: 8px 18px 20px; }
+  .chart-wrap svg { display: block; width: 100%; height: auto; }
+  .radioline {
+    position: absolute; top: 18px; right: 20px; font-size: 12px;
+    color: var(--muted);
+  }
+  .card.sel .radioline { color: var(--sel); font-weight: 700; }
+  .radioline::before { content: "○ "; }
+  .card.sel .radioline::before { content: "● "; }
+
+  .pickbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+    background: rgba(28,27,24,0.94); color: #F4F1EA;
+    backdrop-filter: blur(6px);
+    padding: 14px 24px; display: flex; align-items: center; gap: 16px;
+    justify-content: center; font-size: 13px;
+  }
+  .pickbar b { color: #E8A87C; font-size: 14px; }
+  .pickbar .hint { opacity: 0.55; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="kicker">MyDiary · Monthly Trend Restyle</div>
+  <h1>月度字数趋势 · <em>四种专业风格</em></h1>
+  <p class="sub">同一组样例数据，四种成熟的图表语言。点击卡片选中你喜欢的风格，选定后告诉我编号即可落实到应用里（选中状态显示在页面底部）。</p>
+</header>
+
+<div class="gallery" id="gallery">
+  <div class="card" data-style="A">
+    <div class="card-head">
+      <span class="tag">A</span>
+      <span class="card-title">编辑部风 · The Economist</span>
+      <span class="card-desc">顶部粗基线、极简参考线<br>峰值直接标注，克制而权威</span>
+    </div>
+    <div class="chart-wrap" id="chart-a"></div>
+    <div class="radioline">选择此风格</div>
+  </div>
+
+  <div class="card" data-style="B">
+    <div class="card-head">
+      <span class="tag">B</span>
+      <span class="card-title">终端风 · Bloomberg Terminal</span>
+      <span class="card-desc">暗色、等宽字体、线柱叠加<br>十字准线悬停查看（移动鼠标试试）</span>
+    </div>
+    <div class="chart-wrap" id="chart-b"></div>
+    <div class="radioline">选择此风格</div>
+  </div>
+
+  <div class="card" data-style="C">
+    <div class="card-head">
+      <span class="tag">C</span>
+      <span class="card-title">学术精确风 · Nature Figure</span>
+      <span class="card-desc">L 形坐标轴、外向刻度、空心方点<br>零装饰，如论文插图般严谨</span>
+    </div>
+    <div class="chart-wrap" id="chart-c"></div>
+    <div class="radioline">选择此风格</div>
+  </div>
+
+  <div class="card" data-style="D">
+    <div class="card-head">
+      <span class="tag">D</span>
+      <span class="card-title">现代商务风 · Stripe / ECharts</span>
+      <span class="card-desc">平滑曲线、柔和渐变面积<br>悬停导轨 + 浮层（移动鼠标试试）</span>
+    </div>
+    <div class="chart-wrap" id="chart-d"></div>
+    <div class="radioline">选择此风格</div>
+  </div>
+</div>
+
+<div class="pickbar" id="pickbar">
+  <span>当前选择：</span><b id="picked">未选择（点击上方卡片）</b>
+  <span class="hint">确定后告诉 AI 编号即可</span>
+</div>
+
+<script>
+/* ---------- 样例数据：近 12 个月字数 ---------- */
+const DATA = [
+  { label: '10月', words: 4200 },
+  { label: '11月', words: 5100 },
+  { label: '12月', words: 3800 },
+  { label: '1月',  words: 6400 },
+  { label: '2月',  words: 2900 },
+  { label: '3月',  words: 7800 },
+  { label: '4月',  words: 6600 },
+  { label: '5月',  words: 8400 },
+  { label: '6月',  words: 5900 },
+  { label: '7月',  words: 9200 },
+  { label: '8月',  words: 7100 },
+  { label: '9月',  words: 8800 },
+];
+const W = 980, H = 300, padL = 64, padR = 26, padT = 34, padB = 40;
+const innerW = W - padL - padR, innerH = H - padT - padB;
+const MAX = Math.max(...DATA.map(d => d.words));
+const yOf = v => padT + (1 - v / MAX) * innerH;
+const xOf = i => padL + (i / (DATA.length - 1)) * innerW;
+const fmt = n => n >= 1000 ? (n / 1000).toFixed(n % 1000 ? 1 : 0) + 'k' : String(n);
+const peakIdx = DATA.reduce((a, d, i) => (d.words > DATA[a].words ? i : a), 0);
+const SERIF = 'Georgia, "Songti SC", "SimSun", serif';
+const MONO = '"JetBrains Mono", "Cascadia Code", Consolas, monospace';
+const SANS = '"Source Han Sans SC", "Microsoft YaHei", sans-serif';
+
+/* ============ A · 编辑部风 ============ */
+function renderA() {
+  let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  s += `<rect width="${W}" height="${H}" fill="#FFFDF7"/>`;
+  // 顶部粗基线（编辑部标志性元素）
+  s += `<rect x="${padL}" y="16" width="${W - padL - padR}" height="3" fill="#1C1B18"/>`;
+  s += `<text x="${padL}" y="12" font-family="${SERIF}" font-size="13" font-weight="700" fill="#1C1B18" letter-spacing="0.5">月度字数，近 12 个月</text>`;
+  // 参考线：仅 1/2、1/3 处虚线
+  [1/2, 1/3].forEach(t => {
+    const y = padT + t * innerH;
+    s += `<line x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}" stroke="#D8D2C4" stroke-width="1"/>`;
+    s += `<text x="${padL - 8}" y="${y + 3.5}" text-anchor="end" font-family="${SANS}" font-size="10" fill="#8A8578">${fmt(Math.round(MAX * (1 - t)))}字</text>`;
+  });
+  // 折线：醒目红
+  const line = DATA.map((d, i) => `${i ? 'L' : 'M'}${xOf(i).toFixed(1)},${yOf(d.words).toFixed(1)}`).join(' ');
+  s += `<path d="${line}" fill="none" stroke="#B4552D" stroke-width="2.4" stroke-linejoin="round"/>`;
+  // 峰值：实心点 + 直接标注
+  const pk = DATA[peakIdx];
+  s += `<circle cx="${xOf(peakIdx)}" cy="${yOf(pk.words)}" r="4" fill="#B4552D"/>`;
+  s += `<text x="${xOf(peakIdx)}" y="${yOf(pk.words) - 12}" text-anchor="middle" font-family="${SERIF}" font-size="12.5" font-weight="700" fill="#1C1B18">${pk.label} ${pk.words.toLocaleString()} 字 ▲</text>`;
+  // 末点：空心 + 数值
+  const last = DATA[DATA.length - 1];
+  s += `<circle cx="${xOf(DATA.length - 1)}" cy="${yOf(last.words)}" r="3.6" fill="#FFFDF7" stroke="#B4552D" stroke-width="2"/>`;
+  s += `<text x="${xOf(DATA.length - 1) + 8}" y="${yOf(last.words) + 4}" font-family="${SERIF}" font-size="12" font-weight="700" fill="#B4552D">${fmt(last.words)}</text>`;
+  // 月份：仅首、季中、末
+  [0, 3, 6, 9, 11].forEach(i => {
+    s += `<text x="${xOf(i)}" y="${H - 14}" text-anchor="middle" font-family="${SANS}" font-size="10" fill="#8A8578">${DATA[i].label}</text>`;
+  });
+  s += `<text x="${W - padR}" y="${H - 14}" text-anchor="end" font-family="${SANS}" font-size="9" fill="#B0A998">来源：MyDiary 写作统计</text>`;
+  s += `</svg>`;
+  return s;
+}
+
+/* ============ B · 终端风 ============ */
+function renderB() {
+  let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  s += `<rect width="${W}" height="${H}" fill="#0B0F14"/>`;
+  // 细网格
+  for (let t = 0; t <= 4; t++) {
+    const v = (MAX / 4) * t, y = yOf(v);
+    s += `<line x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}" stroke="#1A222C" stroke-width="1"/>`;
+    s += `<text x="${padL - 8}" y="${y + 3.5}" text-anchor="end" font-family="${MONO}" font-size="10" fill="#5C6B7E">${fmt(v)}</text>`;
+  }
+  // 柱状阴影
+  DATA.forEach((d, i) => {
+    const bw = innerW / DATA.length * 0.5;
+    s += `<rect x="${xOf(i) - bw / 2}" y="${yOf(d.words)}" width="${bw}" height="${padT + innerH - yOf(d.words)}" fill="#4DD0E1" opacity="0.10"/>`;
+  });
+  const line = DATA.map((d, i) => `${i ? 'L' : 'M'}${xOf(i).toFixed(1)},${yOf(d.words).toFixed(1)}`).join(' ');
+  s += `<path d="${line}" fill="none" stroke="#4DD0E1" stroke-width="1.6"/>`;
+  DATA.forEach((d, i) => {
+    s += `<rect x="${xOf(i) - 2}" y="${yOf(d.words) - 2}" width="4" height="4" fill="#0B0F14" stroke="#4DD0E1" stroke-width="1.2"/>`;
+  });
+  DATA.forEach((d, i) => {
+    if (i % 2) return;
+    s += `<text x="${xOf(i)}" y="${H - 14}" text-anchor="middle" font-family="${MONO}" font-size="10" fill="#5C6B7E">${d.label}</text>`;
+  });
+  s += `<text x="${padL}" y="14" font-family="${MONO}" font-size="10" fill="#4DD0E1" letter-spacing="2">WORDS/MONTH · 12M</text>`;
+  // 十字准线层
+  s += `<g id="xb-cross" style="display:none">
+    <line id="xb-vline" x1="0" x2="0" y1="${padT}" y2="${padT + innerH}" stroke="#3A4656" stroke-width="1" stroke-dasharray="2 3"/>
+    <rect id="xb-tip" width="128" height="42" fill="#131B24" stroke="#3A4656"/>
+    <text id="xb-t1" font-family="${MONO}" font-size="11" fill="#8FA1B8"></text>
+    <text id="xb-t2" font-family="${MONO}" font-size="13" fill="#4DD0E1" font-weight="700"></text>
+  </g>`;
+  s += `<rect id="xb-hit" x="${padL}" y="${padT}" width="${innerW}" height="${innerH}" fill="transparent"/>`;
+  s += `</svg>`;
+  return s;
+}
+
+function wireB(root) {
+  const svg = root.querySelector('svg');
+  const hit = svg.querySelector('#xb-hit'), cross = svg.querySelector('#xb-cross');
+  const vl = svg.querySelector('#xb-vline'), tip = svg.querySelector('#xb-tip');
+  const t1 = svg.querySelector('#xb-t1'), t2 = svg.querySelector('#xb-t2');
+  hit.addEventListener('mousemove', e => {
+    const r = svg.getBoundingClientRect();
+    const mx = (e.clientX - r.left) * (W / r.width);
+    const i = Math.max(0, Math.min(DATA.length - 1, Math.round(((mx - padL) / innerW) * (DATA.length - 1))));
+    const x = xOf(i), y = yOf(DATA[i].words);
+    cross.style.display = '';
+    vl.setAttribute('x1', x); vl.setAttribute('x2', x);
+    t1.textContent = DATA[i].label;
+    t2.textContent = DATA[i].words.toLocaleString() + ' 字';
+    let tx = x + 12, ty = Math.max(padT + 4, y - 50);
+    if (tx + 132 > W - padR) tx = x - 140;
+    tip.setAttribute('x', tx); tip.setAttribute('y', ty);
+    t1.setAttribute('x', tx + 10); t1.setAttribute('y', ty + 17);
+    t2.setAttribute('x', tx + 10); t2.setAttribute('y', ty + 34);
+  });
+  hit.addEventListener('mouseleave', () => { cross.style.display = 'none'; });
+}
+
+/* ============ C · 学术精确风 ============ */
+function renderC() {
+  const axis = '#1C1B18';
+  let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  s += `<rect width="${W}" height="${H}" fill="#FFFFFF"/>`;
+  const yTicks = [0, MAX / 3, 2 * MAX / 3, MAX];
+  yTicks.forEach(v => {
+    const y = yOf(v);
+    s += `<line x1="${padL - 5}" x2="${padL}" y1="${y}" y2="${y}" stroke="${axis}" stroke-width="1"/>`;
+    s += `<text x="${padL - 9}" y="${y + 3.5}" text-anchor="end" font-family="${SANS}" font-size="10.5" fill="${axis}">${v === 0 ? 0 : fmt(v)}</text>`;
+  });
+  // L 形坐标轴
+  s += `<line x1="${padL}" x2="${padL}" y1="${padT - 6}" y2="${padT + innerH}" stroke="${axis}" stroke-width="1.2"/>`;
+  s += `<line x1="${padL}" x2="${W - padR}" y1="${padT + innerH}" y2="${padT + innerH}" stroke="${axis}" stroke-width="1.2"/>`;
+  // 折线：锐利直线，深墨蓝
+  const line = DATA.map((d, i) => `${i ? 'L' : 'M'}${xOf(i).toFixed(1)},${yOf(d.words).toFixed(1)}`).join(' ');
+  s += `<path d="${line}" fill="none" stroke="#16305B" stroke-width="1.4"/>`;
+  // 空心方点
+  DATA.forEach((d, i) => {
+    s += `<rect x="${xOf(i) - 3}" y="${yOf(d.words) - 3}" width="6" height="6" fill="#FFFFFF" stroke="#16305B" stroke-width="1.2"/>`;
+  });
+  // x 刻度外向
+  DATA.forEach((d, i) => {
+    s += `<line x1="${xOf(i)}" x2="${xOf(i)}" y1="${padT + innerH}" y2="${padT + innerH + 4}" stroke="${axis}" stroke-width="1"/>`;
+    if (i % 2) return;
+    s += `<text x="${xOf(i)}" y="${padT + innerH + 16}" text-anchor="middle" font-family="${SANS}" font-size="10" fill="${axis}">${d.label}</text>`;
+  });
+  // 轴标题
+  s += `<text x="${padL - 42}" y="${padT - 10}" font-family="${SANS}" font-size="10.5" fill="${axis}">字数</text>`;
+  s += `<text x="${W - padR}" y="${padT + innerH + 32}" text-anchor="end" font-family="${SANS}" font-size="10.5" fill="${axis}">月份</text>`;
+  s += `<text x="${padL}" y="14" font-family="${SERIF}" font-size="12.5" font-style="italic" fill="#1C1B18">图 1 · 月度写作字数（近 12 个月）</text>`;
+  s += `</svg>`;
+  return s;
+}
+
+/* ============ D · 现代商务风 ============ */
+function renderD() {
+  const AC = '#0E7C86';
+  // Catmull-Rom → 平滑贝塞尔
+  const P = DATA.map((d, i) => [xOf(i), yOf(d.words)]);
+  let path = `M${P[0][0].toFixed(1)},${P[0][1].toFixed(1)}`;
+  for (let i = 0; i < P.length - 1; i++) {
+    const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(P.length - 1, i + 2)];
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    path += ` C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+  }
+  const base = padT + innerH;
+  let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  s += `<defs><linearGradient id="dg" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="${AC}" stop-opacity="0.22"/>
+    <stop offset="100%" stop-color="${AC}" stop-opacity="0.01"/>
+  </linearGradient></defs>`;
+  s += `<rect width="${W}" height="${H}" fill="#FBFBF9" rx="10"/>`;
+  [0, 0.25, 0.5, 0.75, 1].forEach(t => {
+    const v = MAX * t, y = yOf(v);
+    s += `<line x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}" stroke="#ECEAE2" stroke-width="1"/>`;
+    s += `<text x="${padL - 8}" y="${y + 3.5}" text-anchor="end" font-family="${SANS}" font-size="10" fill="#A6A192">${fmt(v)}</text>`;
+  });
+  s += `<path d="${path} L${P[P.length - 1][0].toFixed(1)},${base} L${P[0][0].toFixed(1)},${base} Z" fill="url(#dg)"/>`;
+  s += `<path d="${path}" fill="none" stroke="${AC}" stroke-width="2.2" stroke-linecap="round"/>`;
+  DATA.forEach((d, i) => {
+    s += `<text x="${xOf(i)}" y="${H - 14}" text-anchor="middle" font-family="${SANS}" font-size="10" fill="#A6A192">${d.label}</text>`;
+  });
+  // 悬停层
+  s += `<g id="xd-cross" style="display:none">
+    <line id="xd-vline" x1="0" x2="0" y1="${padT}" y2="${base}" stroke="${AC}" stroke-width="1" opacity="0.35"/>
+    <circle id="xd-dot" r="4.5" fill="#fff" stroke="${AC}" stroke-width="2.2"/>
+    <g id="xd-tipg">
+      <rect id="xd-tip" rx="7" width="112" height="44" fill="#1F2A2C"/>
+      <text id="xd-t1" font-family="${SANS}" font-size="10.5" fill="#9FB3B5"></text>
+      <text id="xd-t2" font-family="${SANS}" font-size="13.5" font-weight="700" fill="#FFFFFF"></text>
+    </g>
+  </g>`;
+  s += `<rect id="xd-hit" x="${padL}" y="${padT}" width="${innerW}" height="${innerH}" fill="transparent"/>`;
+  s += `</svg>`;
+  return s;
+}
+
+function wireD(root) {
+  const svg = root.querySelector('svg');
+  const hit = svg.querySelector('#xd-hit'), cross = svg.querySelector('#xd-cross');
+  const vl = svg.querySelector('#xd-vline'), dot = svg.querySelector('#xd-dot');
+  const tip = svg.querySelector('#xd-tip'), tg = svg.querySelector('#xd-tipg');
+  const t1 = svg.querySelector('#xd-t1'), t2 = svg.querySelector('#xd-t2');
+  hit.addEventListener('mousemove', e => {
+    const r = svg.getBoundingClientRect();
+    const mx = (e.clientX - r.left) * (W / r.width);
+    const i = Math.max(0, Math.min(DATA.length - 1, Math.round(((mx - padL) / innerW) * (DATA.length - 1))));
+    const x = xOf(i), y = yOf(DATA[i].words);
+    cross.style.display = '';
+    vl.setAttribute('x1', x); vl.setAttribute('x2', x);
+    dot.setAttribute('cx', x); dot.setAttribute('cy', y);
+    t1.textContent = DATA[i].label;
+    t2.textContent = DATA[i].words.toLocaleString() + ' 字';
+    let tx = x + 14, ty = Math.max(padT + 4, y - 54);
+    if (tx + 116 > W - padR) tx = x - 128;
+    tip.setAttribute('x', tx); tip.setAttribute('y', ty);
+    t1.setAttribute('x', tx + 12); t1.setAttribute('y', ty + 18);
+    t2.setAttribute('x', tx + 12); t2.setAttribute('y', ty + 36);
+  });
+  hit.addEventListener('mouseleave', () => { cross.style.display = 'none'; });
+}
+
+/* ---------- 渲染 + 选择 ---------- */
+const put = (id, html) => { document.getElementById(id).innerHTML = html; };
+put('chart-a', renderA());
+put('chart-b', renderB());
+put('chart-c', renderC());
+put('chart-d', renderD());
+wireB(document.getElementById('chart-b'));
+wireD(document.getElementById('chart-d'));
+
+const NAMES = { A: 'A · 编辑部风', B: 'B · 终端风', C: 'C · 学术精确风', D: 'D · 现代商务风' };
+document.querySelectorAll('.card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('sel'));
+    card.classList.add('sel');
+    const k = card.dataset.style;
+    document.getElementById('picked').textContent = NAMES[k];
+  });
+});
+</script>
+</body>
+</html>

@@ -393,7 +393,11 @@ export default function App() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowTrend(v => !v)}
+                  onClick={() => {
+                    const next = !showTrend
+                    setShowTrend(next)
+                    if (next) void refresh() // 每次展开都拉取最新数据
+                  }}
                   aria-expanded={showTrend}
                   title={showTrend ? '收起字数趋势' : '展开字数趋势'}
                   className="trend-toggle absolute top-2 right-2 flex items-center justify-center transition-colors"
@@ -615,110 +619,164 @@ function MonthlyTrend({ diaries }: { diaries: DiaryMeta[] }) {
   const max = Math.max(...data.map(d => d.words), 1)
   const total = data.reduce((s, d) => s + d.words, 0)
   const peak = data.reduce((a, b) => (b.words > a.words ? b : a), data[0])
+  const cur = data[data.length - 1] // 当月（最后一根）
 
-  // SVG 坐标
-  const W = 640
-  const H = 132
-  const padL = 40
-  const padR = 14
-  const padT = 14
-  const padB = 24
+  // SVG 坐标（拉宽画布让月与月之间更疏朗）
+  const W = 1000
+  const H = 250
+  const padL = 64
+  const padR = 34
+  const padT = 46
+  const padB = 46
   const innerW = W - padL - padR
   const innerH = H - padT - padB
 
-  const pts = data.map((d, i) => ({
-    x: padL + (data.length <= 1 ? innerW / 2 : (i / (data.length - 1)) * innerW),
-    y: padT + (1 - d.words / max) * innerH,
-    ...d,
-  }))
-  const line = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')
-  const area =
-    line +
-    ' L' + pts[pts.length - 1].x.toFixed(1) + ',' + (padT + innerH).toFixed(1) +
-    ' L' + pts[0].x.toFixed(1) + ',' + (padT + innerH).toFixed(1) + ' Z'
+  const xOf = (i: number) => padL + (i / Math.max(1, data.length - 1)) * innerW
+  const yOf = (v: number) => padT + (1 - v / max) * innerH
+
+  const pts = data.map((d, i) => ({ x: xOf(i), y: yOf(d.words), ...d }))
+
+  // Catmull-Rom → 贝塞尔平滑曲线
+  const smoothPath = useMemo(() => {
+    const P = pts.map(p => [p.x, p.y] as const)
+    if (P.length < 2) return `M${P[0][0]},${P[0][1]}`
+    let path = `M${P[0][0].toFixed(1)},${P[0][1].toFixed(1)}`
+    for (let i = 0; i < P.length - 1; i++) {
+      const p0 = P[Math.max(0, i - 1)]
+      const p1 = P[i]
+      const p2 = P[i + 1]
+      const p3 = P[Math.min(P.length - 1, i + 2)]
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6
+      const c1y = p1[1] + (p2[1] - p0[1]) / 6
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6
+      const c2y = p2[1] - (p3[1] - p1[1]) / 6
+      path += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`
+    }
+    return path
+  }, [data, max])
+  const areaPath =
+    smoothPath +
+    ` L${pts[pts.length - 1].x.toFixed(1)},${(padT + innerH).toFixed(1)}` +
+    ` L${pts[0].x.toFixed(1)},${(padT + innerH).toFixed(1)} Z`
+
+  // 悬停：导轨 + 数据点 + 浮层
+  const svgRef = useRef<SVGSVGElement>(null)
+  const [hover, setHover] = useState<number | null>(null)
+  const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const svg = svgRef.current
+    if (!svg) return
+    const rect = svg.getBoundingClientRect()
+    const mx = ((e.clientX - rect.left) / rect.width) * W
+    const i = Math.round(((mx - padL) / innerW) * (data.length - 1))
+    setHover(Math.max(0, Math.min(data.length - 1, i)))
+  }
+  const hp = hover != null ? pts[hover] : null
+  // 浮层坐标（防溢出）
+  let tipX = 0
+  let tipY = 0
+  if (hp) {
+    tipX = hp.x + 18
+    tipY = Math.max(padT + 2, hp.y - 66)
+    if (tipX + 132 > W - padR) tipX = hp.x - 150
+  }
 
   return (
     <div className="px-5 pt-4 pb-3">
       <div className="flex items-baseline justify-between gap-3 mb-1">
         <div className="label-xs">月度字数趋势 · 近 12 个月</div>
         <div className="label-xs">
-          合计 {formatNumber(total)} 字 · 峰值 {peak.label} {formatNumber(peak.words)} 字
+          本月 {formatNumber(cur.words)} 字 · 合计 {formatNumber(total)} 字 · 峰值 {peak.label} {formatNumber(peak.words)} 字
         </div>
       </div>
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
         width="100%"
-        height={H}
         role="img"
         aria-label="近 12 个月字数趋势"
         style={{ display: 'block' }}
+        onMouseMove={onMove}
+        onMouseLeave={() => setHover(null)}
       >
+        <defs>
+          <linearGradient id="mt-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" style={{ stopColor: 'var(--accent)', stopOpacity: 0.22 }} />
+            <stop offset="100%" style={{ stopColor: 'var(--accent)', stopOpacity: 0.01 }} />
+          </linearGradient>
+        </defs>
+
         {/* 横向参考线 */}
-        {[0, 0.5, 1].map(t => {
+        {[0, 0.25, 0.5, 0.75, 1].map(t => {
           const y = padT + t * innerH
           return (
             <g key={t}>
-              <line
-                x1={padL}
-                x2={W - padR}
-                y1={y}
-                y2={y}
-                stroke="var(--line)"
-                strokeWidth="1"
-                strokeDasharray={t === 1 ? undefined : '3 3'}
-              />
-              <text
-                x={padL - 6}
-                y={y + 3}
-                textAnchor="end"
-                fontSize="10"
-                fill="var(--fg-3)"
-              >
+              <line x1={padL} x2={W - padR} y1={y} y2={y} stroke="var(--line)" strokeWidth="1" />
+              <text x={padL - 10} y={y + 4.5} textAnchor="end" fontSize="13" fill="var(--fg-3)">
                 {formatNumber(Math.round(max * (1 - t)))}
               </text>
             </g>
           )
         })}
 
-        {/* 面积 + 折线 */}
-        <path d={area} fill="var(--accent)" opacity="0.12" />
+        {/* 渐变面积 + 平滑曲线 */}
+        <path d={areaPath} fill="url(#mt-grad)" />
         <path
-          d={line}
+          d={smoothPath}
           fill="none"
           stroke="var(--accent)"
-          strokeWidth="2"
-          strokeLinejoin="round"
+          strokeWidth="3"
           strokeLinecap="round"
         />
 
-        {/* 数据点 */}
-        {pts.map(p => (
-          <circle
-            key={p.key}
-            cx={p.x}
-            cy={p.y}
-            r="3.2"
-            fill="var(--bg)"
-            stroke="var(--accent)"
-            strokeWidth="1.8"
-          >
-            <title>{p.key.slice(0, 4)} 年 {p.label} · {formatNumber(p.words)} 字</title>
-          </circle>
-        ))}
-
         {/* 月份刻度 */}
-        {pts.map((p, i) => (
-          <text
-            key={p.key}
-            x={p.x}
-            y={H - 6}
-            textAnchor="middle"
-            fontSize="10"
-            fill="var(--fg-3)"
-          >
+        {pts.map(p => (
+          <text key={p.key} x={p.x} y={H - 12} textAnchor="middle" fontSize="13" fill="var(--fg-3)">
             {p.label}
           </text>
         ))}
+
+        {/* 当月高亮点 + 数值标注 */}
+        {cur.words > 0 && (
+          <g pointerEvents="none">
+            <circle cx={pts[pts.length - 1].x} cy={yOf(cur.words)} r="6" fill="var(--bg)" stroke="var(--accent)" strokeWidth="3" />
+            <text
+              x={pts[pts.length - 1].x}
+              y={yOf(cur.words) - 16}
+              textAnchor={pts[pts.length - 1].x > W - padR - 90 ? 'end' : 'middle'}
+              fontSize="14"
+              fontWeight="700"
+              fill="var(--accent)"
+            >
+              本月 {formatNumber(cur.words)} 字
+            </text>
+          </g>
+        )}
+
+        {/* 悬停：导轨 + 数据点 + 浮层 */}
+        {hp && (
+          <g pointerEvents="none">
+            <line
+              x1={hp.x} x2={hp.x} y1={padT} y2={padT + innerH}
+              stroke="var(--accent)" strokeWidth="1" opacity="0.35"
+            />
+            <circle cx={hp.x} cy={hp.y} r="6" fill="var(--bg)" stroke="var(--accent)" strokeWidth="2.8" />
+            <g>
+              <rect x={tipX} y={tipY} rx="9" width="132" height="56" fill="#1F2A2C" />
+              <text x={tipX + 15} y={tipY + 22} fontSize="12.5" fill="#9FB3B5">
+                {hp.key.slice(0, 4)} 年 {hp.label}
+              </text>
+              <text x={tipX + 15} y={tipY + 45} fontSize="16" fontWeight="700" fill="#FFFFFF">
+                {hp.words.toLocaleString()} 字
+              </text>
+            </g>
+          </g>
+        )}
+
+        {/* 悬停热区 */}
+        <rect
+          x={padL} y={padT} width={innerW} height={innerH}
+          fill="transparent"
+        />
       </svg>
     </div>
   )

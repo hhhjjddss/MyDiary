@@ -1,12 +1,18 @@
 node_modules
 dist
+release
+data
 *.log
+*.enc
 config.json
 .DS_Store
+Thumbs.db
 
-# 快捷方式等系统文件
+.vscode/
+.idea/
+
 *.lnk
 
-# 日记是私人内容，默认不纳入版本控制
-diaries/*.md
-!diaries/.gitkeep
+.playwright-mcp/
+
+diaries/

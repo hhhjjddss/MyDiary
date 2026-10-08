@@ -4,13 +4,14 @@
 
 ## 快速开始
 
-双击 **`MyDiary.bat`** 即可。
+运行打包版即可（`npm run dist:win` 构建产物在 `release/`，安装后从开始菜单/桌面打开 MyDiary）。
 
-- 第一次运行会自动安装依赖（约 30 秒）
-- 之后每次双击，会自动启动服务并打开浏览器
-- **关闭那个黑色窗口 = 停止服务**
+开发调试：
 
-浏览器地址：<http://localhost:5399>
+```bash
+npm install
+npm run dev
+```
 
 ## 功能
 
@@ -27,14 +28,11 @@
 
 ```
 MyDiary/
-├── MyDiary.bat          ← 双击这个启动
+├── electron/            ← Electron 主进程
 ├── server/
-│   └── server.js        ← 本地服务（读写文件 + 启动配置的编辑器）
+│   └── server.js        ← 本地服务（读写加密数据仓 + 启动配置的编辑器）
 ├── src/                 ← 网页前端
-├── diaries/             ← 你的日记（.md 文件）
-│   ├── 2026-09-24.md
-│   └── 2026-09-23.md
-├── config.json          ← 配置（编辑器路径等）
+├── data/                ← 加密数据仓（开发模式）
 └── package.json
 ```
 
@@ -59,13 +57,13 @@ MyDiary/
 浏览器出于安全限制，无法直接读写磁盘文件、也无法启动本地程序（编辑器等）。本地服务只做这两件事，界面本身仍是普通网页。
 
 **Q: 换了电脑怎么迁移？**
-把整个 `MyDiary` 文件夹拷走即可。**只要 `diaries/` 文件夹在，日记就在**。
+拷贝加密数据目录（安装版在 `%APPDATA%\my-diary\data\`，含 `key.oscrypt` 与 `data/`）。**数据目录在，日记就在**；注意 key.oscrypt 与数据要一起拷走。
 
 **Q: 端口被占用？**
 修改 `server/server.js` 顶部的 `PORT`（默认 4399），同时改 `vite.config.ts` 里的代理目标。
 
 **Q: 想开机自动启动？**
-`Win+R` 输入 `shell:startup`，把 `MyDiary.bat` 的快捷方式放进去即可。
+`Win+R` 输入 `shell:startup`，把 MyDiary 的快捷方式（安装版从开始菜单创建，免安装版用 `release/win-unpacked` 里的 exe）放进去即可。
 
 ## 技术栈
 

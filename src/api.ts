@@ -51,7 +51,7 @@ async function req<T>(url: string, init?: RequestInit, timeoutMs?: number): Prom
     if (e instanceof DOMException && e.name === 'AbortError') {
       throw new Error('请求超时，请检查本地服务是否正常运行')
     }
-    throw new Error('无法连接本地服务，请确认 MyDiary.bat 正在运行')
+    throw new Error('无法连接本地服务，请重新打开 MyDiary')
   }
   if (timer) clearTimeout(timer)
 

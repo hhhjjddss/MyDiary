@@ -734,6 +734,14 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
   const [pwDialog, setPwDialog] = useState<null | { mode: 'set' | 'off' | 'change' | 'answer'; a: string; b: string; c: string; d: string }>(null)
   const [pwErr, setPwErr] = useState<string | null>(null)
   const [exitAsk, setExitAsk] = useState(false)
+  // 操作结果提示
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const toastTimer = useRef<number | null>(null)
+  const showToast = (msg: string, ok: boolean) => {
+    setToast({ msg, ok })
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    toastTimer.current = window.setTimeout(() => setToast(null), 3000)
+  }
 
   const pick = async () => {
     setPicking(true)
@@ -815,6 +823,7 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
           token = t
         }
         await api.saveConfig({ editorPath: editor, securityAnswer: d, unlockToken: token })
+        showToast('辅助验证答案已保存', true)
       } else if (pwDialog.mode === 'set') {
         // 开启密码：新密码 + 确认 + 辅助验证答案
         if (!/^\d{6}$/.test(b)) { setPwErr('新密码须为 6 位数字'); return }
@@ -829,6 +838,7 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
         })
         writeGateEnabled(true)
         setGateOn(true)
+        showToast('已开启密码保护', true)
       } else if (pwDialog.mode === 'off') {
         if (!a) { setPwErr('请输入当前密码'); return }
         const t = await verifyCurrent(a)
@@ -837,6 +847,7 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
         await api.saveConfig({ editorPath: editor, privacyGateEnabled: false, unlockToken: token })
         writeGateEnabled(false)
         setGateOn(false)
+        showToast('已关闭密码保护', true)
       } else {
         if (!a) { setPwErr('请输入当前密码'); return }
         if (!/^\d{6}$/.test(b)) { setPwErr('新密码须为 6 位数字'); return }
@@ -850,17 +861,26 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
           ...(d ? { securityAnswer: d } : {}),
           unlockToken: token,
         })
+        showToast('密码已修改', true)
       }
       setPwDialog(null)
       onSaved()
     } catch (e) {
       const msg = e instanceof Error ? e.message : ''
+      const label =
+        pwDialog.mode === 'set'
+          ? '开启密码保护失败'
+          : pwDialog.mode === 'off'
+          ? '关闭密码保护失败'
+          : pwDialog.mode === 'answer'
+          ? '保存辅助验证答案失败'
+          : '修改密码失败'
       setPwErr(
         msg.includes('404')
-          ? '本地服务未启动，请重新打开 MyDiary'
+          ? `${label}：本地服务未启动，请重新打开 MyDiary`
           : msg.includes('401')
-          ? '当前密码错误'
-          : msg || '保存失败',
+          ? `${label}：当前密码错误`
+          : `${label}：${msg || '请重试'}`,
       )
     } finally {
       setBusy(false)
@@ -1170,6 +1190,25 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 操作结果提示 */}
+      {toast && (
+        <div
+          className="fixed left-1/2 label-xs border c-line fade-in"
+          style={{
+            bottom: 28,
+            transform: 'translateX(-50%)',
+            zIndex: 90,
+            background: 'var(--bg-2)',
+            borderRadius: 6,
+            padding: '8px 16px',
+            boxShadow: '0 8px 28px rgba(0,0,0,0.25)',
+            color: toast.ok ? 'var(--success)' : 'var(--danger)',
+          }}
+        >
+          {toast.msg}
         </div>
       )}
     </div>

@@ -1,0 +1,752 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* GitHub · 浅色 */
+    --bg: #ffffff;
+    --bg-2: #f6f8fa;
+    --fg: #1f2328;
+    --fg-2: #656d76;
+    --fg-3: #8c959f;
+    --line: #d1d9e0;
+    --fill: #40c463;
+    --empty: #ebedf0;
+    --accent: #0969da;
+    --success: #1a7f37;
+    --danger: #d1242f;
+    /* GitHub 贡献图绿阶 */
+    --lv1: #9be9a8;
+    --lv2: #40c463;
+    --lv3: #30a14e;
+    --lv4: #216e39;
+    --block-radius: 2px;
+  }
+
+  .dark {
+    /* GitHub · 深色 */
+    --bg: #0d1117;
+    --bg-2: #151b23;
+    --fg: #e6edf3;
+    --fg-2: #9198a1;
+    --fg-3: #6e7681;
+    --line: #3d444d;
+    --fill: #2ea043;
+    --empty: #21262d;
+    --accent: #4493f8;
+    --success: #3fb950;
+    --danger: #f85149;
+    /* GitHub 贡献图绿阶（深色） */
+    --lv1: #033a16;
+    --lv2: #196c2e;
+    --lv3: #2ea043;
+    --lv4: #56d364;
+    --block-radius: 2px;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
+      "PingFang SC", "Microsoft YaHei", Helvetica, Arial, sans-serif;
+    overscroll-behavior-y: none;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+}
+
+@layer components {
+  .mono {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+      Consolas, "Liberation Mono", monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .c-fg {
+    color: var(--fg);
+  }
+  .c-fg2 {
+    color: var(--fg-2);
+  }
+  .c-fg3 {
+    color: var(--fg-3);
+  }
+  .c-bg {
+    background: var(--bg);
+  }
+  .c-line {
+    border-color: var(--line);
+  }
+
+  .card {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+
+  .label-xs {
+    font-size: 11px;
+    color: var(--fg-2);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 5px 14px;
+    border-radius: 6px;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: #1f883d;
+    color: #ffffff;
+    box-shadow: 0 1px 0 rgba(31, 35, 40, 0.1);
+  }
+  .btn-primary:hover {
+    background: #1c8139;
+  }
+  .btn-ghost {
+    border: 1px solid var(--line);
+    color: var(--fg);
+    background: var(--bg-2);
+  }
+  .btn-ghost:hover {
+    background: color-mix(in srgb, var(--fg) 6%, var(--bg-2));
+  }
+  .btn-danger {
+    border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent);
+    color: var(--danger);
+    background: var(--bg);
+  }
+  .btn-danger:hover {
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
+    border-color: var(--danger);
+  }
+
+  /* 列表行 hover */
+  .list-row {
+    transition: background 100ms ease;
+  }
+  .list-row:hover {
+    background: var(--bg-2);
+  }
+
+  .hide-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 热力图格子 hover */
+  .heat-cell {
+    transition: transform 120ms ease;
+  }
+  .heat-cell:not(:disabled):hover {
+    transform: scale(1.25);
+    position: relative;
+    z-index: 5;
+    outline: 1px solid var(--fg-2);
+    outline-offset: 0;
+  }
+
+  /* 今日格子：呼吸光晕——柔光画在 ::after（藏在格子底下），
+     只动 opacity/transform，不再用 box-shadow 硬环扫到邻格 */
+  .heat-cell.heat-today {
+    position: relative;
+    z-index: 2;
+  }
+  .heat-cell.heat-today::after {
+    content: '';
+    position: absolute;
+    inset: -5px;
+    border-radius: 7px;
+    /* 环带渐变：中心透明（不遮格子底色），亮环集中在格子边缘外一圈 */
+    background: radial-gradient(
+      closest-side,
+      transparent 48%,
+      color-mix(in srgb, var(--accent) 75%, transparent) 68%,
+      transparent 100%
+    );
+    pointer-events: none;
+    animation: heat-breathe 2.2s ease-in-out infinite;
+  }
+
+  /* 趋势开关图标 */
+  .trend-toggle:hover {
+    background: color-mix(in srgb, var(--accent) 10%, var(--bg-2)) !important;
+    color: var(--fg) !important;
+    border-color: var(--fg-3) !important;
+  }
+
+  /* 格内休/班标记 */
+  .heat-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    line-height: 1;
+    font-weight: 600;
+    pointer-events: none;
+    user-select: none;
+    overflow: hidden;
+  }
+}
+
+@keyframes heat-breathe {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+/* 减少动态时：光晕静止在中间值 */
+@media (prefers-reduced-motion: reduce) {
+  .heat-cell.heat-today::after {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+
+/* 拾光 · 抽日子转轮 */
+.shiguang-slot {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 48%, var(--bg-2) 100%);
+  padding: 18px 12px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--fg) 6%, transparent);
+}
+
+.shiguang-digits {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  font-family: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--fg);
+  line-height: 1;
+  transition: filter 180ms ease;
+}
+
+.shiguang-digits.is-rolling {
+  filter: blur(0.4px);
+}
+
+.shiguang-d {
+  display: inline-flex;
+  justify-content: center;
+  min-width: 0.72em;
+  transition: transform 80ms linear;
+}
+
+.shiguang-d.spin {
+  animation: shiguang-flip 0.11s linear infinite;
+}
+
+.shiguang-gloss {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg) 80%, transparent) 0%,
+    transparent 22%,
+    transparent 78%,
+    color-mix(in srgb, var(--bg) 80%, transparent) 100%
+  );
+}
+
+@keyframes shiguang-flip {
+  0% {
+    transform: translateY(-42%);
+    opacity: 0.35;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(38%);
+    opacity: 0.45;
+  }
+}
+
+.shiguang-reveal {
+  animation: shiguang-in 320ms ease both;
+  border: 1px solid var(--line);
+}
+
+.shiguang-placeholder {
+  animation: shiguang-in 240ms ease both;
+}
+
+@keyframes shiguang-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 日记正文排版 */
+.diary-content h1,
+.diary-content h2,
+.diary-content h3,
+.diary-content h4 {
+  color: var(--fg);
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 1.6em 0 0.6em;
+}
+.diary-content h1 {
+  font-size: 1.45em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--line);
+}
+.diary-content h2 {
+  font-size: 1.25em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--line);
+}
+.diary-content h3 {
+  font-size: 1.1em;
+}
+.diary-content h1:first-child,
+.diary-content h2:first-child {
+  margin-top: 0;
+}
+
+.diary-content p {
+  margin: 0.75em 0;
+}
+.diary-content strong {
+  font-weight: 600;
+}
+.diary-content em {
+  font-style: italic;
+}
+
+.diary-content a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.diary-content a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.diary-content ul,
+.diary-content ol {
+  margin: 0.75em 0;
+  padding-left: 1.6em;
+}
+.diary-content ul {
+  list-style: disc;
+}
+.diary-content ol {
+  list-style: decimal;
+}
+.diary-content li {
+  margin: 0.28em 0;
+}
+.diary-content li::marker {
+  color: var(--fg-3);
+}
+
+.diary-content blockquote {
+  border-left: 3px solid var(--line);
+  padding: 0 1em;
+  margin: 1em 0;
+  color: var(--fg-2);
+}
+
+.diary-content code {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    Consolas, monospace;
+  font-size: 0.86em;
+  background: var(--bg-2);
+  padding: 0.2em 0.4em;
+  border-radius: 6px;
+}
+
+.diary-content pre {
+  background: var(--bg-2);
+  padding: 1em 1.1em;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  overflow-x: auto;
+  margin: 1.1em 0;
+  line-height: 1.6;
+}
+.diary-content pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.85em;
+}
+
+.diary-content hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 1.8em 0;
+}
+
+.diary-content mark {
+  background: color-mix(in srgb, #fff8c5 90%, transparent);
+  color: var(--fg);
+  padding: 0.1em 0.25em;
+  border-radius: 3px;
+}
+
+/* 任务列表 */
+.diary-content ul.task-list {
+  list-style: none;
+  padding-left: 0.2em;
+}
+.diary-content .task-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4em;
+}
+.diary-content .task-item input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 1em;
+  height: 1em;
+  margin: 0;
+  cursor: default;
+  flex-shrink: 0;
+}
+
+/* 图片 */
+.diary-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 0.5em 0;
+}
+
+/* 淡入 */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-up {
+  animation: fadeUp 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.fade-in {
+  animation: fadeIn 160ms ease both;
+}
+
+/* 弹窗 */
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.modal-in {
+  animation: modalIn 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 数字滚动 */
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.count-up {
+  animation: countUp 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 大时钟：Orbitron，顶部亮、底部稍暗的渐变数字 */
+.clock-time {
+  font-family: "Orbitron", -apple-system, "Segoe UI", sans-serif;
+  font-size: clamp(44px, 8vw, 64px);
+  background: linear-gradient(
+    180deg,
+    var(--fg) 30%,
+    color-mix(in srgb, var(--fg) 72%, var(--fg-2)) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 冒号常亮（必须单独给字色，否则被 clock-time 的 transparent 填充吃掉） */
+.clock-colon {
+  color: var(--fg);
+  -webkit-text-fill-color: var(--fg);
+}
+
+/* 年份滑杆 · GitHub 风 */
+input[type="range"] {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 4px;
+  background: var(--empty);
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--line);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== 开屏 =====
+   「落款」式构图：单色符号 + 字标 + 一根画完的细线，一个材质、一条动线。
+   组合整体一次进场；细线是唯一有独立时序的元素（它就是时间轴本身）；
+   结尾整体收束淡出，背景与后续界面同为 --bg，交接无跳变。
+   所有时序相对 --boot-dur，改时长不用改关键帧。 */
+.boot-splash {
+  --boot-dur: 3600ms;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      46% 34% at 50% 46%,
+      color-mix(in srgb, var(--accent) 6%, transparent) 0%,
+      transparent 72%
+    ),
+    var(--bg);
+  cursor: default;
+  user-select: none;
+  animation: bootExit var(--boot-dur) cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.boot-core {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  /* 整个组合作为一个单元进场：一次位移、一次透明度，不再逐个错峰 */
+  animation: bootEnter calc(var(--boot-dur) * 0.42) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 符号：logo-mark.png 是白色剪影，用 mask 套上当前前景色，明暗主题自动适配。
+   活性：一道主题色光泽周期性掠过 + 光晕呼吸 + 极轻微悬浮，让它"活着"但不出戏 */
+.boot-mark {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  background-color: var(--fg);
+  overflow: hidden;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  /* 光晕呼吸；几何保持整数像素静止，避免 mask 被亚像素重采样发虚 */
+  animation: markBreathe calc(var(--boot-dur) * 0.75) ease-in-out calc(var(--boot-dur) * 0.1) infinite;
+}
+/* 光泽层：mask 内部的独立子层，用 transform 平移（合成器线程驱动，帧率稳） */
+.boot-sheen {
+  position: absolute;
+  top: -12%;
+  bottom: -12%;
+  left: 0;
+  width: 46%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--accent) 65%, white) 50%,
+    transparent 100%
+  );
+  filter: blur(1px);
+  transform: translateX(-140%);
+  /* 循环慢扫：linear 保证首尾相接不顿挫；带子出右帧后从左侧重新进入，视觉无跳变 */
+  animation: markSweep calc(var(--boot-dur) * 0.3) linear calc(var(--boot-dur) * 0.1) infinite;
+}
+
+/* 字标：与顶栏品牌同一套 Orbitron，开屏和主界面用同一把声音说话 */
+.boot-word {
+  font-family: "Orbitron", sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-indent: 0.12em;
+  line-height: 1;
+  color: var(--fg);
+}
+
+/* 细线：唯一的进度指示，从进场结束画到收尾开始 */
+.boot-line {
+  position: relative;
+  width: 128px;
+  height: 1px;
+  background: color-mix(in srgb, var(--fg) 14%, transparent);
+  overflow: hidden;
+}
+.boot-line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  transform-origin: left center;
+  animation: bootDraw calc(var(--boot-dur) * 0.68) cubic-bezier(0.3, 0.1, 0.2, 1) calc(var(--boot-dur) * 0.16) both;
+}
+
+@keyframes markSweep {
+  from {
+    transform: translateX(-140%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+@keyframes markBreathe {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 16%, transparent));
+  }
+  50% {
+    filter: drop-shadow(0 0 16px color-mix(in srgb, var(--accent) 38%, transparent));
+  }
+}
+
+@keyframes bootEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes bootDraw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes bootExit {
+  0%,
+  86% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* 隐私门：静态单色符号（与开屏同一素材同一材质），mask 源由组件内联提供 */
+.gate-mark {
+  display: block;
+  width: 56px;
+  height: 56px;
+  background-color: var(--fg);
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--accent) 26%, transparent));
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+/* 关闭动效时：静态落款，细线画满 */
+@media (prefers-reduced-motion: reduce) {
+  .boot-splash {
+    animation: none;
+    opacity: 1;
+  }
+  .boot-core {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+  .boot-mark {
+    animation: none;
+    filter: drop-shadow(0 0 16px color-mix(in srgb, var(--accent) 30%, transparent));
+  }
+  .boot-sheen {
+    display: none;
+  }
+  .boot-line::after {
+    animation: none;
+    transform: none;
+  }
+}

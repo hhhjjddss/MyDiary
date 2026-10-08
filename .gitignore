@@ -1,0 +1,12 @@
+node_modules
+dist
+*.log
+config.json
+.DS_Store
+
+# 快捷方式等系统文件
+*.lnk
+
+# 日记是私人内容，默认不纳入版本控制
+diaries/*.md
+!diaries/.gitkeep

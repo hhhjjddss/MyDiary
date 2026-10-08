@@ -1,0 +1,33 @@
+- generic [ref=f5e3]:
+  - banner [ref=f5e4]:
+    - generic [ref=f5e5]:
+      - generic [ref=f5e6]:
+        - generic [ref=f5e7]: MyDiary
+        - generic [ref=f5e8]: 本地日记
+      - generic [ref=f5e10]:
+        - generic [ref=f5e11]:
+          - button "热力图" [ref=f5e12] [cursor=pointer]
+          - button "列表" [ref=f5e13] [cursor=pointer]
+        - button "⚙" [ref=f5e14] [cursor=pointer]
+  - main [ref=f5e15]:
+    - generic [ref=f5e16]:
+      - generic [ref=f5e17]:
+        - generic [ref=f5e18]: 2026 年 9 月 28 日 · 周一
+        - generic [ref=f5e19]:
+          - generic [ref=f5e20]:
+            - text: 17:45
+            - generic [ref=f5e21]: :17
+          - generic "当前节气" [ref=f5e22]:
+            - generic [ref=f5e23]: 今天是秋分第
+            - generic [ref=f5e24]: "6"
+            - generic [ref=f5e25]: 天
+      - generic [ref=f5e26]:
+        - heading "今天还没有写。" [level=1] [ref=f5e28]
+        - button "写今天的日记" [ref=f5e30] [cursor=pointer]
+    - generic [ref=f5e31]:
+      - generic [ref=f5e32]:
+        - generic "滚轮或拖动滑块切换年份" [ref=f5e33]:
+          - generic [ref=f5e34]: 2026 年
+          - slider "选择年份" [ref=f5e35] [cursor=pointer]: "2026"
+        - generic [ref=f5e36]: 点格子查看当天
+      - generic [ref=f5e37]: 读取中…

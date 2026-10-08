@@ -1,0 +1,519 @@
+- generic [ref=f2e3]:
+  - banner [ref=f2e4]:
+    - generic [ref=f2e5]:
+      - generic [ref=f2e6]:
+        - generic [ref=f2e7]: MyDiary
+        - generic [ref=f2e8]: 本地日记
+      - generic [ref=f2e10]:
+        - generic [ref=f2e11]:
+          - button "热力图" [ref=f2e12] [cursor=pointer]
+          - button "列表" [ref=f2e13] [cursor=pointer]
+        - button "⚙" [ref=f2e14] [cursor=pointer]
+  - main [ref=f2e15]:
+    - generic [ref=f2e16]:
+      - generic [ref=f2e17]:
+        - generic [ref=f2e18]: 2026 年 9 月 28 日 · 周一
+        - generic [ref=f2e19]:
+          - generic [ref=f2e20]:
+            - text: 17:31
+            - generic [ref=f2e21]: :41
+          - generic "当前节气" [ref=f2e34]: 秋分
+      - generic [ref=f2e22]:
+        - generic [ref=f2e23]:
+          - heading "今天已经写过了。" [level=1] [ref=f2e35]
+          - paragraph [ref=f2e36]: 197 字 · 更新于 1 小时前
+        - generic [ref=f2e25]:
+          - button "继续写" [ref=f2e37] [cursor=pointer]
+          - button "阅读" [ref=f2e38] [cursor=pointer]
+    - generic [ref=f2e41]:
+      - generic [ref=f2e42]:
+        - generic [ref=f2e43]:
+          - generic [ref=f2e44]: 已写
+          - generic [ref=f2e45]:
+            - generic [ref=f2e46]: "2"
+            - generic [ref=f2e47]: 天
+        - generic [ref=f2e48]:
+          - generic [ref=f2e49]: 当前连续
+          - generic [ref=f2e50]:
+            - generic [ref=f2e51]: "1"
+            - generic [ref=f2e52]: 天
+        - generic [ref=f2e53]:
+          - generic [ref=f2e54]: 最长连续
+          - generic [ref=f2e55]:
+            - generic [ref=f2e56]: "1"
+            - generic [ref=f2e57]: 天
+        - generic [ref=f2e58]:
+          - generic [ref=f2e59]: 累计字数
+          - generic [ref=f2e60]:
+            - generic [ref=f2e61]: "207"
+            - generic [ref=f2e62]: 字
+      - button "展开字数趋势" [ref=f2e63] [cursor=pointer]
+    - generic [ref=f2e27]:
+      - generic [ref=f2e28]:
+        - generic "滚轮或拖动滑块切换年份" [ref=f2e29]:
+          - generic [ref=f2e30]: 2026 年
+          - slider "选择年份" [ref=f2e31] [cursor=pointer]: "2026"
+        - generic [ref=f2e32]: 点格子查看当天
+      - generic [ref=f2e66]:
+        - generic [ref=f2e67]:
+          - generic [ref=f2e70]:
+            - generic [ref=f2e71]: 日
+            - generic [ref=f2e72]: 一
+            - generic [ref=f2e73]: 二
+            - generic [ref=f2e74]: 三
+            - generic [ref=f2e75]: 四
+            - generic [ref=f2e76]: 五
+            - generic [ref=f2e77]: 六
+          - generic [ref=f2e79]:
+            - generic [ref=f2e80]:
+              - generic: 1月
+              - generic: 2月
+              - generic: 3月
+              - generic: 4月
+              - generic: 5月
+              - generic: 6月
+              - generic: 7月
+              - generic: 8月
+              - generic: 9月
+              - generic: 10月
+              - generic: 11月
+              - generic: 12月
+            - generic [ref=f2e81]:
+              - generic [ref=f2e82]:
+                - button [disabled] [ref=f2e83]
+                - button [disabled] [ref=f2e84]
+                - button [disabled] [ref=f2e85]
+                - button [disabled] [ref=f2e86]
+                - button "休" [ref=f2e87] [cursor=pointer]
+                - button "休" [ref=f2e88] [cursor=pointer]
+                - button "休" [ref=f2e89] [cursor=pointer]
+              - generic [ref=f2e90]:
+                - button "班" [ref=f2e91] [cursor=pointer]
+                - button "2026-01-05 周一" [ref=f2e92] [cursor=pointer]
+                - button "2026-01-06 周二" [ref=f2e93] [cursor=pointer]
+                - button "2026-01-07 周三" [ref=f2e94] [cursor=pointer]
+                - button "2026-01-08 周四" [ref=f2e95] [cursor=pointer]
+                - button "2026-01-09 周五" [ref=f2e96] [cursor=pointer]
+                - button "2026-01-10 周六" [ref=f2e97] [cursor=pointer]
+              - generic [ref=f2e98]:
+                - button "2026-01-11 周日" [ref=f2e99] [cursor=pointer]
+                - button "2026-01-12 周一" [ref=f2e100] [cursor=pointer]
+                - button "2026-01-13 周二" [ref=f2e101] [cursor=pointer]
+                - button "2026-01-14 周三" [ref=f2e102] [cursor=pointer]
+                - button "2026-01-15 周四" [ref=f2e103] [cursor=pointer]
+                - button "2026-01-16 周五" [ref=f2e104] [cursor=pointer]
+                - button "2026-01-17 周六" [ref=f2e105] [cursor=pointer]
+              - generic [ref=f2e106]:
+                - button "2026-01-18 周日" [ref=f2e107] [cursor=pointer]
+                - button "2026-01-19 周一" [ref=f2e108] [cursor=pointer]
+                - button "2026-01-20 周二" [ref=f2e109] [cursor=pointer]
+                - button "2026-01-21 周三" [ref=f2e110] [cursor=pointer]
+                - button "2026-01-22 周四" [ref=f2e111] [cursor=pointer]
+                - button "2026-01-23 周五" [ref=f2e112] [cursor=pointer]
+                - button "2026-01-24 周六" [ref=f2e113] [cursor=pointer]
+              - generic [ref=f2e114]:
+                - button "2026-01-25 周日" [ref=f2e115] [cursor=pointer]
+                - button "2026-01-26 周一" [ref=f2e116] [cursor=pointer]
+                - button "2026-01-27 周二" [ref=f2e117] [cursor=pointer]
+                - button "2026-01-28 周三" [ref=f2e118] [cursor=pointer]
+                - button "2026-01-29 周四" [ref=f2e119] [cursor=pointer]
+                - button "2026-01-30 周五" [ref=f2e120] [cursor=pointer]
+                - button "2026-01-31 周六" [ref=f2e121] [cursor=pointer]
+              - generic [ref=f2e122]:
+                - button "2026-02-01 周日" [ref=f2e123] [cursor=pointer]
+                - button "2026-02-02 周一" [ref=f2e124] [cursor=pointer]
+                - button "2026-02-03 周二" [ref=f2e125] [cursor=pointer]
+                - button "2026-02-04 周三" [ref=f2e126] [cursor=pointer]
+                - button "2026-02-05 周四" [ref=f2e127] [cursor=pointer]
+                - button "2026-02-06 周五" [ref=f2e128] [cursor=pointer]
+                - button "2026-02-07 周六" [ref=f2e129] [cursor=pointer]
+              - generic [ref=f2e130]:
+                - button "2026-02-08 周日" [ref=f2e131] [cursor=pointer]
+                - button "2026-02-09 周一" [ref=f2e132] [cursor=pointer]
+                - button "2026-02-10 周二" [ref=f2e133] [cursor=pointer]
+                - button "2026-02-11 周三" [ref=f2e134] [cursor=pointer]
+                - button "2026-02-12 周四" [ref=f2e135] [cursor=pointer]
+                - button "2026-02-13 周五" [ref=f2e136] [cursor=pointer]
+                - button "班" [ref=f2e137] [cursor=pointer]
+              - generic [ref=f2e138]:
+                - button "休" [ref=f2e139] [cursor=pointer]
+                - button "休" [ref=f2e140] [cursor=pointer]
+                - button "休" [ref=f2e141] [cursor=pointer]
+                - button "休" [ref=f2e142] [cursor=pointer]
+                - button "休" [ref=f2e143] [cursor=pointer]
+                - button "休" [ref=f2e144] [cursor=pointer]
+                - button "休" [ref=f2e145] [cursor=pointer]
+              - generic [ref=f2e146]:
+                - button "休" [ref=f2e147] [cursor=pointer]
+                - button "休" [ref=f2e148] [cursor=pointer]
+                - button "2026-02-24 周二" [ref=f2e149] [cursor=pointer]
+                - button "2026-02-25 周三" [ref=f2e150] [cursor=pointer]
+                - button "2026-02-26 周四" [ref=f2e151] [cursor=pointer]
+                - button "2026-02-27 周五" [ref=f2e152] [cursor=pointer]
+                - button "班" [ref=f2e153] [cursor=pointer]
+              - generic [ref=f2e154]:
+                - button "2026-03-01 周日" [ref=f2e155] [cursor=pointer]
+                - button "2026-03-02 周一" [ref=f2e156] [cursor=pointer]
+                - button "2026-03-03 周二" [ref=f2e157] [cursor=pointer]
+                - button "2026-03-04 周三" [ref=f2e158] [cursor=pointer]
+                - button "2026-03-05 周四" [ref=f2e159] [cursor=pointer]
+                - button "2026-03-06 周五" [ref=f2e160] [cursor=pointer]
+                - button "2026-03-07 周六" [ref=f2e161] [cursor=pointer]
+              - generic [ref=f2e162]:
+                - button "2026-03-08 周日" [ref=f2e163] [cursor=pointer]
+                - button "2026-03-09 周一" [ref=f2e164] [cursor=pointer]
+                - button "2026-03-10 周二" [ref=f2e165] [cursor=pointer]
+                - button "2026-03-11 周三" [ref=f2e166] [cursor=pointer]
+                - button "2026-03-12 周四" [ref=f2e167] [cursor=pointer]
+                - button "2026-03-13 周五" [ref=f2e168] [cursor=pointer]
+                - button "2026-03-14 周六" [ref=f2e169] [cursor=pointer]
+              - generic [ref=f2e170]:
+                - button "2026-03-15 周日" [ref=f2e171] [cursor=pointer]
+                - button "2026-03-16 周一" [ref=f2e172] [cursor=pointer]
+                - button "2026-03-17 周二" [ref=f2e173] [cursor=pointer]
+                - button "2026-03-18 周三" [ref=f2e174] [cursor=pointer]
+                - button "2026-03-19 周四" [ref=f2e175] [cursor=pointer]
+                - button "2026-03-20 周五" [ref=f2e176] [cursor=pointer]
+                - button "2026-03-21 周六" [ref=f2e177] [cursor=pointer]
+              - generic [ref=f2e178]:
+                - button "2026-03-22 周日" [ref=f2e179] [cursor=pointer]
+                - button "2026-03-23 周一" [ref=f2e180] [cursor=pointer]
+                - button "2026-03-24 周二" [ref=f2e181] [cursor=pointer]
+                - button "2026-03-25 周三" [ref=f2e182] [cursor=pointer]
+                - button "2026-03-26 周四" [ref=f2e183] [cursor=pointer]
+                - button "2026-03-27 周五" [ref=f2e184] [cursor=pointer]
+                - button "2026-03-28 周六" [ref=f2e185] [cursor=pointer]
+              - generic [ref=f2e186]:
+                - button "2026-03-29 周日" [ref=f2e187] [cursor=pointer]
+                - button "2026-03-30 周一" [ref=f2e188] [cursor=pointer]
+                - button "2026-03-31 周二" [ref=f2e189] [cursor=pointer]
+                - button "2026-04-01 周三" [ref=f2e190] [cursor=pointer]
+                - button "2026-04-02 周四" [ref=f2e191] [cursor=pointer]
+                - button "2026-04-03 周五" [ref=f2e192] [cursor=pointer]
+                - button "休" [ref=f2e193] [cursor=pointer]
+              - generic [ref=f2e194]:
+                - button "休" [ref=f2e195] [cursor=pointer]
+                - button "休" [ref=f2e196] [cursor=pointer]
+                - button "2026-04-07 周二" [ref=f2e197] [cursor=pointer]
+                - button "2026-04-08 周三" [ref=f2e198] [cursor=pointer]
+                - button "2026-04-09 周四" [ref=f2e199] [cursor=pointer]
+                - button "2026-04-10 周五" [ref=f2e200] [cursor=pointer]
+                - button "2026-04-11 周六" [ref=f2e201] [cursor=pointer]
+              - generic [ref=f2e202]:
+                - button "2026-04-12 周日" [ref=f2e203] [cursor=pointer]
+                - button "2026-04-13 周一" [ref=f2e204] [cursor=pointer]
+                - button "2026-04-14 周二" [ref=f2e205] [cursor=pointer]
+                - button "2026-04-15 周三" [ref=f2e206] [cursor=pointer]
+                - button "2026-04-16 周四" [ref=f2e207] [cursor=pointer]
+                - button "2026-04-17 周五" [ref=f2e208] [cursor=pointer]
+                - button "2026-04-18 周六" [ref=f2e209] [cursor=pointer]
+              - generic [ref=f2e210]:
+                - button "2026-04-19 周日" [ref=f2e211] [cursor=pointer]
+                - button "2026-04-20 周一" [ref=f2e212] [cursor=pointer]
+                - button "2026-04-21 周二" [ref=f2e213] [cursor=pointer]
+                - button "2026-04-22 周三" [ref=f2e214] [cursor=pointer]
+                - button "2026-04-23 周四" [ref=f2e215] [cursor=pointer]
+                - button "2026-04-24 周五" [ref=f2e216] [cursor=pointer]
+                - button "2026-04-25 周六" [ref=f2e217] [cursor=pointer]
+              - generic [ref=f2e218]:
+                - button "2026-04-26 周日" [ref=f2e219] [cursor=pointer]
+                - button "2026-04-27 周一" [ref=f2e220] [cursor=pointer]
+                - button "2026-04-28 周二" [ref=f2e221] [cursor=pointer]
+                - button "2026-04-29 周三" [ref=f2e222] [cursor=pointer]
+                - button "2026-04-30 周四" [ref=f2e223] [cursor=pointer]
+                - button "休" [ref=f2e224] [cursor=pointer]
+                - button "休" [ref=f2e225] [cursor=pointer]
+              - generic [ref=f2e226]:
+                - button "休" [ref=f2e227] [cursor=pointer]
+                - button "休" [ref=f2e228] [cursor=pointer]
+                - button "休" [ref=f2e229] [cursor=pointer]
+                - button "2026-05-06 周三" [ref=f2e230] [cursor=pointer]
+                - button "2026-05-07 周四" [ref=f2e231] [cursor=pointer]
+                - button "2026-05-08 周五" [ref=f2e232] [cursor=pointer]
+                - button "班" [ref=f2e233] [cursor=pointer]
+              - generic [ref=f2e234]:
+                - button "2026-05-10 周日" [ref=f2e235] [cursor=pointer]
+                - button "2026-05-11 周一" [ref=f2e236] [cursor=pointer]
+                - button "2026-05-12 周二" [ref=f2e237] [cursor=pointer]
+                - button "2026-05-13 周三" [ref=f2e238] [cursor=pointer]
+                - button "2026-05-14 周四" [ref=f2e239] [cursor=pointer]
+                - button "2026-05-15 周五" [ref=f2e240] [cursor=pointer]
+                - button "2026-05-16 周六" [ref=f2e241] [cursor=pointer]
+              - generic [ref=f2e242]:
+                - button "2026-05-17 周日" [ref=f2e243] [cursor=pointer]
+                - button "2026-05-18 周一" [ref=f2e244] [cursor=pointer]
+                - button "2026-05-19 周二" [ref=f2e245] [cursor=pointer]
+                - button "2026-05-20 周三" [ref=f2e246] [cursor=pointer]
+                - button "2026-05-21 周四" [ref=f2e247] [cursor=pointer]
+                - button "2026-05-22 周五" [ref=f2e248] [cursor=pointer]
+                - button "2026-05-23 周六" [ref=f2e249] [cursor=pointer]
+              - generic [ref=f2e250]:
+                - button "2026-05-24 周日" [ref=f2e251] [cursor=pointer]
+                - button "2026-05-25 周一" [ref=f2e252] [cursor=pointer]
+                - button "2026-05-26 周二" [ref=f2e253] [cursor=pointer]
+                - button "2026-05-27 周三" [ref=f2e254] [cursor=pointer]
+                - button "2026-05-28 周四" [ref=f2e255] [cursor=pointer]
+                - button "2026-05-29 周五" [ref=f2e256] [cursor=pointer]
+                - button "2026-05-30 周六" [ref=f2e257] [cursor=pointer]
+              - generic [ref=f2e258]:
+                - button "2026-05-31 周日" [ref=f2e259] [cursor=pointer]
+                - button "2026-06-01 周一" [ref=f2e260] [cursor=pointer]
+                - button "2026-06-02 周二" [ref=f2e261] [cursor=pointer]
+                - button "2026-06-03 周三" [ref=f2e262] [cursor=pointer]
+                - button "2026-06-04 周四" [ref=f2e263] [cursor=pointer]
+                - button "2026-06-05 周五" [ref=f2e264] [cursor=pointer]
+                - button "2026-06-06 周六" [ref=f2e265] [cursor=pointer]
+              - generic [ref=f2e266]:
+                - button "2026-06-07 周日" [ref=f2e267] [cursor=pointer]
+                - button "2026-06-08 周一" [ref=f2e268] [cursor=pointer]
+                - button "2026-06-09 周二" [ref=f2e269] [cursor=pointer]
+                - button "2026-06-10 周三" [ref=f2e270] [cursor=pointer]
+                - button "2026-06-11 周四" [ref=f2e271] [cursor=pointer]
+                - button "2026-06-12 周五" [ref=f2e272] [cursor=pointer]
+                - button "2026-06-13 周六" [ref=f2e273] [cursor=pointer]
+              - generic [ref=f2e274]:
+                - button "2026-06-14 周日" [ref=f2e275] [cursor=pointer]
+                - button "2026-06-15 周一" [ref=f2e276] [cursor=pointer]
+                - button "2026-06-16 周二" [ref=f2e277] [cursor=pointer]
+                - button "2026-06-17 周三" [ref=f2e278] [cursor=pointer]
+                - button "2026-06-18 周四" [ref=f2e279] [cursor=pointer]
+                - button "休" [ref=f2e280] [cursor=pointer]
+                - button "休" [ref=f2e281] [cursor=pointer]
+              - generic [ref=f2e282]:
+                - button "休" [ref=f2e283] [cursor=pointer]
+                - button "2026-06-22 周一" [ref=f2e284] [cursor=pointer]
+                - button "2026-06-23 周二" [ref=f2e285] [cursor=pointer]
+                - button "2026-06-24 周三" [ref=f2e286] [cursor=pointer]
+                - button "2026-06-25 周四" [ref=f2e287] [cursor=pointer]
+                - button "2026-06-26 周五" [ref=f2e288] [cursor=pointer]
+                - button "2026-06-27 周六" [ref=f2e289] [cursor=pointer]
+              - generic [ref=f2e290]:
+                - button "2026-06-28 周日" [ref=f2e291] [cursor=pointer]
+                - button "2026-06-29 周一" [ref=f2e292] [cursor=pointer]
+                - button "2026-06-30 周二" [ref=f2e293] [cursor=pointer]
+                - button "2026-07-01 周三" [ref=f2e294] [cursor=pointer]
+                - button "2026-07-02 周四" [ref=f2e295] [cursor=pointer]
+                - button "2026-07-03 周五" [ref=f2e296] [cursor=pointer]
+                - button "2026-07-04 周六" [ref=f2e297] [cursor=pointer]
+              - generic [ref=f2e298]:
+                - button "2026-07-05 周日" [ref=f2e299] [cursor=pointer]
+                - button "2026-07-06 周一" [ref=f2e300] [cursor=pointer]
+                - button "2026-07-07 周二" [ref=f2e301] [cursor=pointer]
+                - button "2026-07-08 周三" [ref=f2e302] [cursor=pointer]
+                - button "2026-07-09 周四" [ref=f2e303] [cursor=pointer]
+                - button "2026-07-10 周五" [ref=f2e304] [cursor=pointer]
+                - button "2026-07-11 周六" [ref=f2e305] [cursor=pointer]
+              - generic [ref=f2e306]:
+                - button "2026-07-12 周日" [ref=f2e307] [cursor=pointer]
+                - button "2026-07-13 周一" [ref=f2e308] [cursor=pointer]
+                - button "2026-07-14 周二" [ref=f2e309] [cursor=pointer]
+                - button "2026-07-15 周三" [ref=f2e310] [cursor=pointer]
+                - button "2026-07-16 周四" [ref=f2e311] [cursor=pointer]
+                - button "2026-07-17 周五" [ref=f2e312] [cursor=pointer]
+                - button "2026-07-18 周六" [ref=f2e313] [cursor=pointer]
+              - generic [ref=f2e314]:
+                - button "2026-07-19 周日" [ref=f2e315] [cursor=pointer]
+                - button "2026-07-20 周一" [ref=f2e316] [cursor=pointer]
+                - button "2026-07-21 周二" [ref=f2e317] [cursor=pointer]
+                - button "2026-07-22 周三" [ref=f2e318] [cursor=pointer]
+                - button "2026-07-23 周四" [ref=f2e319] [cursor=pointer]
+                - button "2026-07-24 周五" [ref=f2e320] [cursor=pointer]
+                - button "2026-07-25 周六" [ref=f2e321] [cursor=pointer]
+              - generic [ref=f2e322]:
+                - button "2026-07-26 周日" [ref=f2e323] [cursor=pointer]
+                - button "2026-07-27 周一" [ref=f2e324] [cursor=pointer]
+                - button "2026-07-28 周二" [ref=f2e325] [cursor=pointer]
+                - button "2026-07-29 周三" [ref=f2e326] [cursor=pointer]
+                - button "2026-07-30 周四" [ref=f2e327] [cursor=pointer]
+                - button "2026-07-31 周五" [ref=f2e328] [cursor=pointer]
+                - button "2026-08-01 周六" [ref=f2e329] [cursor=pointer]
+              - generic [ref=f2e330]:
+                - button "2026-08-02 周日" [ref=f2e331] [cursor=pointer]
+                - button "2026-08-03 周一" [ref=f2e332] [cursor=pointer]
+                - button "2026-08-04 周二" [ref=f2e333] [cursor=pointer]
+                - button "2026-08-05 周三" [ref=f2e334] [cursor=pointer]
+                - button "2026-08-06 周四" [ref=f2e335] [cursor=pointer]
+                - button "2026-08-07 周五" [ref=f2e336] [cursor=pointer]
+                - button "2026-08-08 周六" [ref=f2e337] [cursor=pointer]
+              - generic [ref=f2e338]:
+                - button "2026-08-09 周日" [ref=f2e339] [cursor=pointer]
+                - button "2026-08-10 周一" [ref=f2e340] [cursor=pointer]
+                - button "2026-08-11 周二" [ref=f2e341] [cursor=pointer]
+                - button "2026-08-12 周三" [ref=f2e342] [cursor=pointer]
+                - button "2026-08-13 周四" [ref=f2e343] [cursor=pointer]
+                - button "2026-08-14 周五" [ref=f2e344] [cursor=pointer]
+                - button "2026-08-15 周六" [ref=f2e345] [cursor=pointer]
+              - generic [ref=f2e346]:
+                - button "2026-08-16 周日" [ref=f2e347] [cursor=pointer]
+                - button "2026-08-17 周一" [ref=f2e348] [cursor=pointer]
+                - button "2026-08-18 周二" [ref=f2e349] [cursor=pointer]
+                - button "2026-08-19 周三" [ref=f2e350] [cursor=pointer]
+                - button "2026-08-20 周四" [ref=f2e351] [cursor=pointer]
+                - button "2026-08-21 周五" [ref=f2e352] [cursor=pointer]
+                - button "2026-08-22 周六" [ref=f2e353] [cursor=pointer]
+              - generic [ref=f2e354]:
+                - button "2026-08-23 周日" [ref=f2e355] [cursor=pointer]
+                - button "2026-08-24 周一" [ref=f2e356] [cursor=pointer]
+                - button "2026-08-25 周二" [ref=f2e357] [cursor=pointer]
+                - button "2026-08-26 周三" [ref=f2e358] [cursor=pointer]
+                - button "2026-08-27 周四" [ref=f2e359] [cursor=pointer]
+                - button "2026-08-28 周五" [ref=f2e360] [cursor=pointer]
+                - button "2026-08-29 周六" [ref=f2e361] [cursor=pointer]
+              - generic [ref=f2e362]:
+                - button "2026-08-30 周日" [ref=f2e363] [cursor=pointer]
+                - button "2026-08-31 周一" [ref=f2e364] [cursor=pointer]
+                - button "2026-09-01 周二" [ref=f2e365] [cursor=pointer]
+                - button "2026-09-02 周三" [ref=f2e366] [cursor=pointer]
+                - button "2026-09-03 周四" [ref=f2e367] [cursor=pointer]
+                - button "2026-09-04 周五" [ref=f2e368] [cursor=pointer]
+                - button "2026-09-05 周六" [ref=f2e369] [cursor=pointer]
+              - generic [ref=f2e370]:
+                - button "2026-09-06 周日" [ref=f2e371] [cursor=pointer]
+                - button "2026-09-07 周一" [ref=f2e372] [cursor=pointer]
+                - button "2026-09-08 周二" [ref=f2e373] [cursor=pointer]
+                - button "2026-09-09 周三" [ref=f2e374] [cursor=pointer]
+                - button "2026-09-10 周四" [ref=f2e375] [cursor=pointer]
+                - button "2026-09-11 周五" [ref=f2e376] [cursor=pointer]
+                - button "2026-09-12 周六" [ref=f2e377] [cursor=pointer]
+              - generic [ref=f2e378]:
+                - button "2026-09-13 周日" [ref=f2e379] [cursor=pointer]
+                - button "2026-09-14 周一" [ref=f2e380] [cursor=pointer]
+                - button "2026-09-15 周二" [ref=f2e381] [cursor=pointer]
+                - button "2026-09-16 周三" [ref=f2e382] [cursor=pointer]
+                - button "2026-09-17 周四" [ref=f2e383] [cursor=pointer]
+                - button "2026-09-18 周五" [ref=f2e384] [cursor=pointer]
+                - button "2026-09-19 周六" [ref=f2e385] [cursor=pointer]
+              - generic [ref=f2e386]:
+                - button "班" [ref=f2e387] [cursor=pointer]
+                - button "2026-09-21 周一" [ref=f2e388] [cursor=pointer]
+                - button "2026-09-22 周二" [ref=f2e389] [cursor=pointer]
+                - button "2026-09-23 周三" [ref=f2e390] [cursor=pointer]
+                - button "2026-09-24 周四" [ref=f2e391] [cursor=pointer]
+                - button "休" [ref=f2e392] [cursor=pointer]
+                - button "休" [ref=f2e393] [cursor=pointer]
+              - generic [ref=f2e394]:
+                - button "休" [ref=f2e395] [cursor=pointer]
+                - button "2026-09-28 周一 · 197 字" [ref=f2e396] [cursor=pointer]
+                - button "2026-09-29 周二" [disabled] [ref=f2e397]
+                - button "2026-09-30 周三" [disabled] [ref=f2e398]
+                - button "休" [disabled] [ref=f2e399]
+                - button "休" [disabled] [ref=f2e400]
+                - button "休" [disabled] [ref=f2e401]
+              - generic [ref=f2e402]:
+                - button "休" [disabled] [ref=f2e403]
+                - button "休" [disabled] [ref=f2e404]
+                - button "休" [disabled] [ref=f2e405]
+                - button "休" [disabled] [ref=f2e406]
+                - button "2026-10-08 周四" [disabled] [ref=f2e407]
+                - button "2026-10-09 周五" [disabled] [ref=f2e408]
+                - button "班" [disabled] [ref=f2e409]
+              - generic [ref=f2e410]:
+                - button "2026-10-11 周日" [disabled] [ref=f2e411]
+                - button "2026-10-12 周一" [disabled] [ref=f2e412]
+                - button "2026-10-13 周二" [disabled] [ref=f2e413]
+                - button "2026-10-14 周三" [disabled] [ref=f2e414]
+                - button "2026-10-15 周四" [disabled] [ref=f2e415]
+                - button "2026-10-16 周五" [disabled] [ref=f2e416]
+                - button "2026-10-17 周六" [disabled] [ref=f2e417]
+              - generic [ref=f2e418]:
+                - button "2026-10-18 周日" [disabled] [ref=f2e419]
+                - button "2026-10-19 周一" [disabled] [ref=f2e420]
+                - button "2026-10-20 周二" [disabled] [ref=f2e421]
+                - button "2026-10-21 周三" [disabled] [ref=f2e422]
+                - button "2026-10-22 周四" [disabled] [ref=f2e423]
+                - button "2026-10-23 周五" [disabled] [ref=f2e424]
+                - button "2026-10-24 周六" [disabled] [ref=f2e425]
+              - generic [ref=f2e426]:
+                - button "2026-10-25 周日" [disabled] [ref=f2e427]
+                - button "2026-10-26 周一" [disabled] [ref=f2e428]
+                - button "2026-10-27 周二" [disabled] [ref=f2e429]
+                - button "2026-10-28 周三" [disabled] [ref=f2e430]
+                - button "2026-10-29 周四" [disabled] [ref=f2e431]
+                - button "2026-10-30 周五" [disabled] [ref=f2e432]
+                - button "2026-10-31 周六" [disabled] [ref=f2e433]
+              - generic [ref=f2e434]:
+                - button "2026-11-01 周日" [disabled] [ref=f2e435]
+                - button "2026-11-02 周一" [disabled] [ref=f2e436]
+                - button "2026-11-03 周二" [disabled] [ref=f2e437]
+                - button "2026-11-04 周三" [disabled] [ref=f2e438]
+                - button "2026-11-05 周四" [disabled] [ref=f2e439]
+                - button "2026-11-06 周五" [disabled] [ref=f2e440]
+                - button "2026-11-07 周六" [disabled] [ref=f2e441]
+              - generic [ref=f2e442]:
+                - button "2026-11-08 周日" [disabled] [ref=f2e443]
+                - button "2026-11-09 周一" [disabled] [ref=f2e444]
+                - button "2026-11-10 周二" [disabled] [ref=f2e445]
+                - button "2026-11-11 周三" [disabled] [ref=f2e446]
+                - button "2026-11-12 周四" [disabled] [ref=f2e447]
+                - button "2026-11-13 周五" [disabled] [ref=f2e448]
+                - button "2026-11-14 周六" [disabled] [ref=f2e449]
+              - generic [ref=f2e450]:
+                - button "2026-11-15 周日" [disabled] [ref=f2e451]
+                - button "2026-11-16 周一" [disabled] [ref=f2e452]
+                - button "2026-11-17 周二" [disabled] [ref=f2e453]
+                - button "2026-11-18 周三" [disabled] [ref=f2e454]
+                - button "2026-11-19 周四" [disabled] [ref=f2e455]
+                - button "2026-11-20 周五" [disabled] [ref=f2e456]
+                - button "2026-11-21 周六" [disabled] [ref=f2e457]
+              - generic [ref=f2e458]:
+                - button "2026-11-22 周日" [disabled] [ref=f2e459]
+                - button "2026-11-23 周一" [disabled] [ref=f2e460]
+                - button "2026-11-24 周二" [disabled] [ref=f2e461]
+                - button "2026-11-25 周三" [disabled] [ref=f2e462]
+                - button "2026-11-26 周四" [disabled] [ref=f2e463]
+                - button "2026-11-27 周五" [disabled] [ref=f2e464]
+                - button "2026-11-28 周六" [disabled] [ref=f2e465]
+              - generic [ref=f2e466]:
+                - button "2026-11-29 周日" [disabled] [ref=f2e467]
+                - button "2026-11-30 周一" [disabled] [ref=f2e468]
+                - button "2026-12-01 周二" [disabled] [ref=f2e469]
+                - button "2026-12-02 周三" [disabled] [ref=f2e470]
+                - button "2026-12-03 周四" [disabled] [ref=f2e471]
+                - button "2026-12-04 周五" [disabled] [ref=f2e472]
+                - button "2026-12-05 周六" [disabled] [ref=f2e473]
+              - generic [ref=f2e474]:
+                - button "2026-12-06 周日" [disabled] [ref=f2e475]
+                - button "2026-12-07 周一" [disabled] [ref=f2e476]
+                - button "2026-12-08 周二" [disabled] [ref=f2e477]
+                - button "2026-12-09 周三" [disabled] [ref=f2e478]
+                - button "2026-12-10 周四" [disabled] [ref=f2e479]
+                - button "2026-12-11 周五" [disabled] [ref=f2e480]
+                - button "2026-12-12 周六" [disabled] [ref=f2e481]
+              - generic [ref=f2e482]:
+                - button "2026-12-13 周日" [disabled] [ref=f2e483]
+                - button "2026-12-14 周一" [disabled] [ref=f2e484]
+                - button "2026-12-15 周二" [disabled] [ref=f2e485]
+                - button "2026-12-16 周三" [disabled] [ref=f2e486]
+                - button "2026-12-17 周四" [disabled] [ref=f2e487]
+                - button "2026-12-18 周五" [disabled] [ref=f2e488]
+                - button "2026-12-19 周六" [disabled] [ref=f2e489]
+              - generic [ref=f2e490]:
+                - button "2026-12-20 周日" [disabled] [ref=f2e491]
+                - button "2026-12-21 周一" [disabled] [ref=f2e492]
+                - button "2026-12-22 周二" [disabled] [ref=f2e493]
+                - button "2026-12-23 周三" [disabled] [ref=f2e494]
+                - button "2026-12-24 周四" [disabled] [ref=f2e495]
+                - button "2026-12-25 周五" [disabled] [ref=f2e496]
+                - button "2026-12-26 周六" [disabled] [ref=f2e497]
+              - generic [ref=f2e498]:
+                - button "2026-12-27 周日" [disabled] [ref=f2e499]
+                - button "2026-12-28 周一" [disabled] [ref=f2e500]
+                - button "2026-12-29 周二" [disabled] [ref=f2e501]
+                - button "2026-12-30 周三" [disabled] [ref=f2e502]
+                - button "2026-12-31 周四" [disabled] [ref=f2e503]
+                - button [disabled] [ref=f2e504]
+                - button [disabled] [ref=f2e505]
+        - generic [ref=f2e506]:
+          - generic [ref=f2e507]: 2026 年 · 已写 2 篇
+          - generic [ref=f2e508]:
+            - generic [ref=f2e509]: 少
+            - generic [ref=f2e515]: 多
+            - generic [ref=f2e516]:
+              - button "日记" [ref=f2e517] [cursor=pointer]
+              - button "节假日" [ref=f2e518] [cursor=pointer]
+              - button "默认" [ref=f2e519] [cursor=pointer]
+            - generic [ref=f2e520]:
+              - generic [ref=f2e521]: 节假日
+              - generic "放假日" [ref=f2e522]
+              - generic "节假日 + 已写日记（默认/日记模式下绿蓝各半）" [ref=f2e523]
+              - generic "调休上班日" [ref=f2e524]

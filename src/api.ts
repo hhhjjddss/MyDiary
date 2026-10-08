@@ -1,0 +1,138 @@
+export interface DiaryMeta {
+  date: string
+  title: string
+  chars: number
+  words: number
+  preview: string
+  mtime: number
+  empty: boolean
+}
+
+export interface Stats {
+  totalDiaries: number
+  writtenDays: number
+  totalChars: number
+  totalWords: number
+  currentStreak: number
+  longestStreak: number
+  firstDate: string | null
+  lastDate: string | null
+}
+
+export interface Status {
+  ok: boolean
+  editorPath: string
+  editorExists: boolean
+  detected: string | null
+  diaryDir: string
+  diaryDirExists: boolean
+  privacyGateEnabled: boolean
+  hasPassword?: boolean
+  hasSecurityAnswer?: boolean
+}
+
+const FETCH_TIMEOUT = 12000
+
+async function req<T>(url: string, init?: RequestInit, timeoutMs?: number): Promise<T> {
+  const timeout = timeoutMs ?? FETCH_TIMEOUT
+  const ctrl = new AbortController()
+  // timeoutMs 传 0 表示不设超时（如等待系统对话框的请求）
+  const timer = timeout > 0 ? setTimeout(() => ctrl.abort(), timeout) : null
+
+  let res: Response
+  try {
+    res = await fetch(url, {
+      headers: { 'Content-Type': 'application/json' },
+      signal: ctrl.signal,
+      ...init,
+    })
+  } catch (e: unknown) {
+    if (timer) clearTimeout(timer)
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      throw new Error('请求超时，请检查本地服务是否正常运行')
+    }
+    throw new Error('无法连接本地服务，请确认 MyDiary.bat 正在运行')
+  }
+  if (timer) clearTimeout(timer)
+
+  if (res.status === 423) {
+    const j = await res.json().catch(() => ({}))
+    const err = new Error(j.message || '操作过于频繁，已临时锁定')
+    ;(err as Error & { locked?: boolean; retryAfterMs?: number }).locked = true
+    ;(err as Error & { locked?: boolean; retryAfterMs?: number }).retryAfterMs = j.retryAfterMs ?? 30000
+    throw err
+  }
+  if (!res.ok) throw new Error(`请求失败 (${res.status})`)
+  try {
+    return (await res.json()) as T
+  } catch {
+    throw new Error('服务响应异常')
+  }
+}
+
+export const api = {
+  status: () => req<Status>('/api/status'),
+  diaries: () => req<{ ok: boolean; diaries: DiaryMeta[] }>('/api/diaries'),
+  stats: () => req<Stats & { ok: boolean }>('/api/stats'),
+  diary: (date: string) =>
+    req<{ ok: boolean; exists: boolean; date: string; content: string }>(`/api/diary/${date}`),
+  save: (date: string, content: string) =>
+    req<{ ok: boolean }>(`/api/diary/${date}`, { method: 'PUT', body: JSON.stringify({ content }) }),
+  uploadImage: (dataURL: string, date: string) =>
+    req<{ ok: boolean; name: string }>('/api/image', { method: 'POST', body: JSON.stringify({ dataURL, date }) }),
+  open: (date?: string) =>
+    req<{ ok: boolean; created?: boolean; error?: string; message?: string; path?: string }>(
+      '/api/open',
+      { method: 'POST', body: JSON.stringify({ date }) }
+    ),
+  reveal: (date: string) =>
+    req<{ ok: boolean }>('/api/reveal', { method: 'POST', body: JSON.stringify({ date }) }),
+  remove: (date: string) =>
+    req<{ ok: boolean }>(`/api/diary/${date}`, { method: 'DELETE' }),
+  saveConfig: (cfg: {
+    editorPath?: string
+    diaryDir?: string
+    privacyPassword?: string
+    privacyGateEnabled?: boolean
+    securityAnswer?: string
+    unlockToken?: string
+  }) => req<{ ok: boolean } & Record<string, unknown>>('/api/config', { method: 'POST', body: JSON.stringify(cfg) }),
+  pickPath: (params: { mode: 'folder' | 'exe'; initial?: string }) => {
+    const q = new URLSearchParams({ mode: params.mode })
+    if (params.initial) q.set('initial', params.initial)
+    // 不设超时：原生对话框会一直等到用户选完/取消
+    return req<{ ok: boolean; path: string | null }>(`/api/pick-path?${q.toString()}`, undefined, 0)
+  },
+  holiday: (year: number) =>
+    req<{ ok: boolean; data: Record<string, { name: string; type: 'holiday' | 'work' }> }>(`/api/holiday?year=${year}`),
+  solarTerm: (date: string) =>
+    req<{ ok: boolean; date: string; term: string | null; day?: number | null; label?: string | null }>(
+      `/api/solar-term?date=${date}`,
+    ),
+  unlock: (password: string) =>
+    req<{ ok: boolean; token?: string; locked?: boolean; retryAfterMs?: number; message?: string; fails?: number }>(
+      '/api/unlock',
+      { method: 'POST', body: JSON.stringify({ password }) },
+    ),
+  privacyPassword: (unlockToken?: string) =>
+    req<{ ok: boolean; password: string }>(
+      '/api/privacy-password',
+      unlockToken
+        ? { headers: { 'x-unlock-token': unlockToken } }
+        : undefined,
+    ),
+  securityQuestion: () =>
+    req<{ ok: boolean; question: string; hasAnswer: boolean }>('/api/security-question'),
+  verifySecurityAnswer: (answer: string) =>
+    req<{ ok: boolean; resetToken?: string; locked?: boolean; retryAfterMs?: number; message?: string }>(
+      '/api/verify-security-answer',
+      { method: 'POST', body: JSON.stringify({ answer }) },
+    ),
+  resetPassword: (resetToken: string, newPassword: string) =>
+    req<{ ok: boolean; message?: string }>(
+      '/api/reset-password',
+      { method: 'POST', body: JSON.stringify({ resetToken, newPassword }) },
+    ),
+  lock: () => req<{ ok: boolean }>('/api/lock', { method: 'POST' }),
+  shutdown: () => req<{ ok: boolean }>('/api/shutdown', { method: 'POST' }),
+}

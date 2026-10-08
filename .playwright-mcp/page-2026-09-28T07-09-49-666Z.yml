@@ -1,0 +1,28 @@
+- generic [ref=f6e3]:
+  - banner [ref=f6e4]:
+    - generic [ref=f6e5]:
+      - generic [ref=f6e6]:
+        - generic [ref=f6e7]: MyDiary
+        - generic [ref=f6e8]: 本地日记
+      - generic [ref=f6e9]:
+        - generic [ref=f6e10]:
+          - button "热力图" [ref=f6e11] [cursor=pointer]
+          - button "列表" [ref=f6e12] [cursor=pointer]
+        - button "⚙" [ref=f6e13] [cursor=pointer]
+  - main [ref=f6e14]:
+    - generic [ref=f6e15]:
+      - generic [ref=f6e16]:
+        - generic [ref=f6e17]: 2026 年 9 月 28 日 · 周一
+        - generic [ref=f6e18]:
+          - text: 15:09
+          - generic [ref=f6e19]: :49
+      - generic [ref=f6e20]:
+        - heading "今天还没有写。" [level=1] [ref=f6e22]
+        - button "写今天的日记" [ref=f6e24] [cursor=pointer]
+    - generic [ref=f6e25]:
+      - generic [ref=f6e26]:
+        - generic "滚轮或拖动滑块切换年份" [ref=f6e27]:
+          - generic [ref=f6e28]: 2026 年
+          - slider "选择年份" [ref=f6e29] [cursor=pointer]: "2026"
+        - generic [ref=f6e30]: 点格子查看当天
+      - generic [ref=f6e31]: 读取中…

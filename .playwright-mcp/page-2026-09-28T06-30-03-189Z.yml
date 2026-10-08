@@ -1,0 +1,515 @@
+- generic [ref=f1e3]:
+  - banner [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - generic [ref=f1e6]:
+        - generic [ref=f1e7]: MyDiary
+        - generic [ref=f1e8]: 本地日记
+      - generic [ref=f1e9]:
+        - generic [ref=f1e10]:
+          - button "热力图" [ref=f1e11] [cursor=pointer]
+          - button "列表" [ref=f1e12] [cursor=pointer]
+        - button "⚙" [ref=f1e13] [cursor=pointer]
+  - main [ref=f1e14]:
+    - generic [ref=f1e15]:
+      - generic [ref=f1e16]:
+        - generic [ref=f1e17]: 2026 年 9 月 28 日 · 周一
+        - generic [ref=f1e18]:
+          - text: 14:30
+          - generic [ref=f1e19]: :02
+      - generic [ref=f1e20]:
+        - generic [ref=f1e21]:
+          - heading "今天已经写过了。" [level=1] [ref=f1e22]
+          - paragraph [ref=f1e23]: 185 字 · 更新于 49 分钟前
+        - generic [ref=f1e24]:
+          - button "继续写" [ref=f1e25] [cursor=pointer]
+          - button "阅读" [ref=f1e26] [cursor=pointer]
+    - generic [ref=f1e28]:
+      - generic [ref=f1e29]:
+        - generic [ref=f1e30]: 已写
+        - generic [ref=f1e31]:
+          - generic [ref=f1e32]: "2"
+          - generic [ref=f1e33]: 天
+      - generic [ref=f1e34]:
+        - generic [ref=f1e35]: 当前连续
+        - generic [ref=f1e36]:
+          - generic [ref=f1e37]: "1"
+          - generic [ref=f1e38]: 天
+      - generic [ref=f1e39]:
+        - generic [ref=f1e40]: 最长连续
+        - generic [ref=f1e41]:
+          - generic [ref=f1e42]: "1"
+          - generic [ref=f1e43]: 天
+      - generic [ref=f1e44]:
+        - generic [ref=f1e45]: 累计字数
+        - generic [ref=f1e46]:
+          - generic [ref=f1e47]: "195"
+          - generic [ref=f1e48]: 字
+    - generic [ref=f1e49]:
+      - generic [ref=f1e50]:
+        - generic "滚轮或拖动滑块切换年份" [ref=f1e51]:
+          - generic [ref=f1e52]: 2026 年
+          - slider "选择年份" [ref=f1e53] [cursor=pointer]: "2026"
+        - generic [ref=f1e54]: 点格子查看当天
+      - generic [ref=f1e55]:
+        - generic [ref=f1e56]:
+          - generic [ref=f1e59]:
+            - generic [ref=f1e60]: 日
+            - generic [ref=f1e61]: 一
+            - generic [ref=f1e62]: 二
+            - generic [ref=f1e63]: 三
+            - generic [ref=f1e64]: 四
+            - generic [ref=f1e65]: 五
+            - generic [ref=f1e66]: 六
+          - generic [ref=f1e68]:
+            - generic [ref=f1e69]:
+              - generic: 1月
+              - generic: 2月
+              - generic: 3月
+              - generic: 4月
+              - generic: 5月
+              - generic: 6月
+              - generic: 7月
+              - generic: 8月
+              - generic: 9月
+              - generic: 10月
+              - generic: 11月
+              - generic: 12月
+            - generic [ref=f1e70]:
+              - generic [ref=f1e71]:
+                - button [disabled] [ref=f1e72]
+                - button [disabled] [ref=f1e73]
+                - button [disabled] [ref=f1e74]
+                - button [disabled] [ref=f1e75]
+                - button "休" [ref=f1e76] [cursor=pointer]
+                - button "休" [ref=f1e77] [cursor=pointer]
+                - button "休" [ref=f1e78] [cursor=pointer]
+              - generic [ref=f1e79]:
+                - button "班" [ref=f1e80] [cursor=pointer]
+                - button "2026-01-05" [ref=f1e81] [cursor=pointer]
+                - button "2026-01-06" [ref=f1e82] [cursor=pointer]
+                - button "2026-01-07" [ref=f1e83] [cursor=pointer]
+                - button "2026-01-08" [ref=f1e84] [cursor=pointer]
+                - button "2026-01-09" [ref=f1e85] [cursor=pointer]
+                - button "2026-01-10" [ref=f1e86] [cursor=pointer]
+              - generic [ref=f1e87]:
+                - button "2026-01-11" [ref=f1e88] [cursor=pointer]
+                - button "2026-01-12" [ref=f1e89] [cursor=pointer]
+                - button "2026-01-13" [ref=f1e90] [cursor=pointer]
+                - button "2026-01-14" [ref=f1e91] [cursor=pointer]
+                - button "2026-01-15" [ref=f1e92] [cursor=pointer]
+                - button "2026-01-16" [ref=f1e93] [cursor=pointer]
+                - button "2026-01-17" [ref=f1e94] [cursor=pointer]
+              - generic [ref=f1e95]:
+                - button "2026-01-18" [ref=f1e96] [cursor=pointer]
+                - button "2026-01-19" [ref=f1e97] [cursor=pointer]
+                - button "2026-01-20" [ref=f1e98] [cursor=pointer]
+                - button "2026-01-21" [ref=f1e99] [cursor=pointer]
+                - button "2026-01-22" [ref=f1e100] [cursor=pointer]
+                - button "2026-01-23" [ref=f1e101] [cursor=pointer]
+                - button "2026-01-24" [ref=f1e102] [cursor=pointer]
+              - generic [ref=f1e103]:
+                - button "2026-01-25" [ref=f1e104] [cursor=pointer]
+                - button "2026-01-26" [ref=f1e105] [cursor=pointer]
+                - button "2026-01-27" [ref=f1e106] [cursor=pointer]
+                - button "2026-01-28" [ref=f1e107] [cursor=pointer]
+                - button "2026-01-29" [ref=f1e108] [cursor=pointer]
+                - button "2026-01-30" [ref=f1e109] [cursor=pointer]
+                - button "2026-01-31" [ref=f1e110] [cursor=pointer]
+              - generic [ref=f1e111]:
+                - button "2026-02-01" [ref=f1e112] [cursor=pointer]
+                - button "2026-02-02" [ref=f1e113] [cursor=pointer]
+                - button "2026-02-03" [ref=f1e114] [cursor=pointer]
+                - button "2026-02-04" [ref=f1e115] [cursor=pointer]
+                - button "2026-02-05" [ref=f1e116] [cursor=pointer]
+                - button "2026-02-06" [ref=f1e117] [cursor=pointer]
+                - button "2026-02-07" [ref=f1e118] [cursor=pointer]
+              - generic [ref=f1e119]:
+                - button "2026-02-08" [ref=f1e120] [cursor=pointer]
+                - button "2026-02-09" [ref=f1e121] [cursor=pointer]
+                - button "2026-02-10" [ref=f1e122] [cursor=pointer]
+                - button "2026-02-11" [ref=f1e123] [cursor=pointer]
+                - button "2026-02-12" [ref=f1e124] [cursor=pointer]
+                - button "2026-02-13" [ref=f1e125] [cursor=pointer]
+                - button "班" [ref=f1e126] [cursor=pointer]
+              - generic [ref=f1e127]:
+                - button "休" [ref=f1e128] [cursor=pointer]
+                - button "休" [ref=f1e129] [cursor=pointer]
+                - button "休" [ref=f1e130] [cursor=pointer]
+                - button "休" [ref=f1e131] [cursor=pointer]
+                - button "休" [ref=f1e132] [cursor=pointer]
+                - button "休" [ref=f1e133] [cursor=pointer]
+                - button "休" [ref=f1e134] [cursor=pointer]
+              - generic [ref=f1e135]:
+                - button "休" [ref=f1e136] [cursor=pointer]
+                - button "休" [ref=f1e137] [cursor=pointer]
+                - button "2026-02-24" [ref=f1e138] [cursor=pointer]
+                - button "2026-02-25" [ref=f1e139] [cursor=pointer]
+                - button "2026-02-26" [ref=f1e140] [cursor=pointer]
+                - button "2026-02-27" [ref=f1e141] [cursor=pointer]
+                - button "班" [ref=f1e142] [cursor=pointer]
+              - generic [ref=f1e143]:
+                - button "2026-03-01" [ref=f1e144] [cursor=pointer]
+                - button "2026-03-02" [ref=f1e145] [cursor=pointer]
+                - button "2026-03-03" [ref=f1e146] [cursor=pointer]
+                - button "2026-03-04" [ref=f1e147] [cursor=pointer]
+                - button "2026-03-05" [ref=f1e148] [cursor=pointer]
+                - button "2026-03-06" [ref=f1e149] [cursor=pointer]
+                - button "2026-03-07" [ref=f1e150] [cursor=pointer]
+              - generic [ref=f1e151]:
+                - button "2026-03-08" [ref=f1e152] [cursor=pointer]
+                - button "2026-03-09" [ref=f1e153] [cursor=pointer]
+                - button "2026-03-10" [ref=f1e154] [cursor=pointer]
+                - button "2026-03-11" [ref=f1e155] [cursor=pointer]
+                - button "2026-03-12" [ref=f1e156] [cursor=pointer]
+                - button "2026-03-13" [ref=f1e157] [cursor=pointer]
+                - button "2026-03-14" [ref=f1e158] [cursor=pointer]
+              - generic [ref=f1e159]:
+                - button "2026-03-15" [ref=f1e160] [cursor=pointer]
+                - button "2026-03-16" [ref=f1e161] [cursor=pointer]
+                - button "2026-03-17" [ref=f1e162] [cursor=pointer]
+                - button "2026-03-18" [ref=f1e163] [cursor=pointer]
+                - button "2026-03-19" [ref=f1e164] [cursor=pointer]
+                - button "2026-03-20" [ref=f1e165] [cursor=pointer]
+                - button "2026-03-21" [ref=f1e166] [cursor=pointer]
+              - generic [ref=f1e167]:
+                - button "2026-03-22" [ref=f1e168] [cursor=pointer]
+                - button "2026-03-23" [ref=f1e169] [cursor=pointer]
+                - button "2026-03-24" [ref=f1e170] [cursor=pointer]
+                - button "2026-03-25" [ref=f1e171] [cursor=pointer]
+                - button "2026-03-26" [ref=f1e172] [cursor=pointer]
+                - button "2026-03-27" [ref=f1e173] [cursor=pointer]
+                - button "2026-03-28" [ref=f1e174] [cursor=pointer]
+              - generic [ref=f1e175]:
+                - button "2026-03-29" [ref=f1e176] [cursor=pointer]
+                - button "2026-03-30" [ref=f1e177] [cursor=pointer]
+                - button "2026-03-31" [ref=f1e178] [cursor=pointer]
+                - button "2026-04-01" [ref=f1e179] [cursor=pointer]
+                - button "2026-04-02" [ref=f1e180] [cursor=pointer]
+                - button "2026-04-03" [ref=f1e181] [cursor=pointer]
+                - button "休" [ref=f1e182] [cursor=pointer]
+              - generic [ref=f1e183]:
+                - button "休" [ref=f1e184] [cursor=pointer]
+                - button "休" [ref=f1e185] [cursor=pointer]
+                - button "2026-04-07" [ref=f1e186] [cursor=pointer]
+                - button "2026-04-08" [ref=f1e187] [cursor=pointer]
+                - button "2026-04-09" [ref=f1e188] [cursor=pointer]
+                - button "2026-04-10" [ref=f1e189] [cursor=pointer]
+                - button "2026-04-11" [ref=f1e190] [cursor=pointer]
+              - generic [ref=f1e191]:
+                - button "2026-04-12" [ref=f1e192] [cursor=pointer]
+                - button "2026-04-13" [ref=f1e193] [cursor=pointer]
+                - button "2026-04-14" [ref=f1e194] [cursor=pointer]
+                - button "2026-04-15" [ref=f1e195] [cursor=pointer]
+                - button "2026-04-16" [ref=f1e196] [cursor=pointer]
+                - button "2026-04-17" [ref=f1e197] [cursor=pointer]
+                - button "2026-04-18" [ref=f1e198] [cursor=pointer]
+              - generic [ref=f1e199]:
+                - button "2026-04-19" [ref=f1e200] [cursor=pointer]
+                - button "2026-04-20" [ref=f1e201] [cursor=pointer]
+                - button "2026-04-21" [ref=f1e202] [cursor=pointer]
+                - button "2026-04-22" [ref=f1e203] [cursor=pointer]
+                - button "2026-04-23" [ref=f1e204] [cursor=pointer]
+                - button "2026-04-24" [ref=f1e205] [cursor=pointer]
+                - button "2026-04-25" [ref=f1e206] [cursor=pointer]
+              - generic [ref=f1e207]:
+                - button "2026-04-26" [ref=f1e208] [cursor=pointer]
+                - button "2026-04-27" [ref=f1e209] [cursor=pointer]
+                - button "2026-04-28" [ref=f1e210] [cursor=pointer]
+                - button "2026-04-29" [ref=f1e211] [cursor=pointer]
+                - button "2026-04-30" [ref=f1e212] [cursor=pointer]
+                - button "休" [ref=f1e213] [cursor=pointer]
+                - button "休" [ref=f1e214] [cursor=pointer]
+              - generic [ref=f1e215]:
+                - button "休" [ref=f1e216] [cursor=pointer]
+                - button "休" [ref=f1e217] [cursor=pointer]
+                - button "休" [ref=f1e218] [cursor=pointer]
+                - button "2026-05-06" [ref=f1e219] [cursor=pointer]
+                - button "2026-05-07" [ref=f1e220] [cursor=pointer]
+                - button "2026-05-08" [ref=f1e221] [cursor=pointer]
+                - button "班" [ref=f1e222] [cursor=pointer]
+              - generic [ref=f1e223]:
+                - button "2026-05-10" [ref=f1e224] [cursor=pointer]
+                - button "2026-05-11" [ref=f1e225] [cursor=pointer]
+                - button "2026-05-12" [ref=f1e226] [cursor=pointer]
+                - button "2026-05-13" [ref=f1e227] [cursor=pointer]
+                - button "2026-05-14" [ref=f1e228] [cursor=pointer]
+                - button "2026-05-15" [ref=f1e229] [cursor=pointer]
+                - button "2026-05-16" [ref=f1e230] [cursor=pointer]
+              - generic [ref=f1e231]:
+                - button "2026-05-17" [ref=f1e232] [cursor=pointer]
+                - button "2026-05-18" [ref=f1e233] [cursor=pointer]
+                - button "2026-05-19" [ref=f1e234] [cursor=pointer]
+                - button "2026-05-20" [ref=f1e235] [cursor=pointer]
+                - button "2026-05-21" [ref=f1e236] [cursor=pointer]
+                - button "2026-05-22" [ref=f1e237] [cursor=pointer]
+                - button "2026-05-23" [ref=f1e238] [cursor=pointer]
+              - generic [ref=f1e239]:
+                - button "2026-05-24" [ref=f1e240] [cursor=pointer]
+                - button "2026-05-25" [ref=f1e241] [cursor=pointer]
+                - button "2026-05-26" [ref=f1e242] [cursor=pointer]
+                - button "2026-05-27" [ref=f1e243] [cursor=pointer]
+                - button "2026-05-28" [ref=f1e244] [cursor=pointer]
+                - button "2026-05-29" [ref=f1e245] [cursor=pointer]
+                - button "2026-05-30" [ref=f1e246] [cursor=pointer]
+              - generic [ref=f1e247]:
+                - button "2026-05-31" [ref=f1e248] [cursor=pointer]
+                - button "2026-06-01" [ref=f1e249] [cursor=pointer]
+                - button "2026-06-02" [ref=f1e250] [cursor=pointer]
+                - button "2026-06-03" [ref=f1e251] [cursor=pointer]
+                - button "2026-06-04" [ref=f1e252] [cursor=pointer]
+                - button "2026-06-05" [ref=f1e253] [cursor=pointer]
+                - button "2026-06-06" [ref=f1e254] [cursor=pointer]
+              - generic [ref=f1e255]:
+                - button "2026-06-07" [ref=f1e256] [cursor=pointer]
+                - button "2026-06-08" [ref=f1e257] [cursor=pointer]
+                - button "2026-06-09" [ref=f1e258] [cursor=pointer]
+                - button "2026-06-10" [ref=f1e259] [cursor=pointer]
+                - button "2026-06-11" [ref=f1e260] [cursor=pointer]
+                - button "2026-06-12" [ref=f1e261] [cursor=pointer]
+                - button "2026-06-13" [ref=f1e262] [cursor=pointer]
+              - generic [ref=f1e263]:
+                - button "2026-06-14" [ref=f1e264] [cursor=pointer]
+                - button "2026-06-15" [ref=f1e265] [cursor=pointer]
+                - button "2026-06-16" [ref=f1e266] [cursor=pointer]
+                - button "2026-06-17" [ref=f1e267] [cursor=pointer]
+                - button "2026-06-18" [ref=f1e268] [cursor=pointer]
+                - button "休" [ref=f1e269] [cursor=pointer]
+                - button "休" [ref=f1e270] [cursor=pointer]
+              - generic [ref=f1e271]:
+                - button "休" [ref=f1e272] [cursor=pointer]
+                - button "2026-06-22" [ref=f1e273] [cursor=pointer]
+                - button "2026-06-23" [ref=f1e274] [cursor=pointer]
+                - button "2026-06-24" [ref=f1e275] [cursor=pointer]
+                - button "2026-06-25" [ref=f1e276] [cursor=pointer]
+                - button "2026-06-26" [ref=f1e277] [cursor=pointer]
+                - button "2026-06-27" [ref=f1e278] [cursor=pointer]
+              - generic [ref=f1e279]:
+                - button "2026-06-28" [ref=f1e280] [cursor=pointer]
+                - button "2026-06-29" [ref=f1e281] [cursor=pointer]
+                - button "2026-06-30" [ref=f1e282] [cursor=pointer]
+                - button "2026-07-01" [ref=f1e283] [cursor=pointer]
+                - button "2026-07-02" [ref=f1e284] [cursor=pointer]
+                - button "2026-07-03" [ref=f1e285] [cursor=pointer]
+                - button "2026-07-04" [ref=f1e286] [cursor=pointer]
+              - generic [ref=f1e287]:
+                - button "2026-07-05" [ref=f1e288] [cursor=pointer]
+                - button "2026-07-06" [ref=f1e289] [cursor=pointer]
+                - button "2026-07-07" [ref=f1e290] [cursor=pointer]
+                - button "2026-07-08" [ref=f1e291] [cursor=pointer]
+                - button "2026-07-09" [ref=f1e292] [cursor=pointer]
+                - button "2026-07-10" [ref=f1e293] [cursor=pointer]
+                - button "2026-07-11" [ref=f1e294] [cursor=pointer]
+              - generic [ref=f1e295]:
+                - button "2026-07-12" [ref=f1e296] [cursor=pointer]
+                - button "2026-07-13" [ref=f1e297] [cursor=pointer]
+                - button "2026-07-14" [ref=f1e298] [cursor=pointer]
+                - button "2026-07-15" [ref=f1e299] [cursor=pointer]
+                - button "2026-07-16" [ref=f1e300] [cursor=pointer]
+                - button "2026-07-17" [ref=f1e301] [cursor=pointer]
+                - button "2026-07-18" [ref=f1e302] [cursor=pointer]
+              - generic [ref=f1e303]:
+                - button "2026-07-19" [ref=f1e304] [cursor=pointer]
+                - button "2026-07-20" [ref=f1e305] [cursor=pointer]
+                - button "2026-07-21" [ref=f1e306] [cursor=pointer]
+                - button "2026-07-22" [ref=f1e307] [cursor=pointer]
+                - button "2026-07-23" [ref=f1e308] [cursor=pointer]
+                - button "2026-07-24" [ref=f1e309] [cursor=pointer]
+                - button "2026-07-25" [ref=f1e310] [cursor=pointer]
+              - generic [ref=f1e311]:
+                - button "2026-07-26" [ref=f1e312] [cursor=pointer]
+                - button "2026-07-27" [ref=f1e313] [cursor=pointer]
+                - button "2026-07-28" [ref=f1e314] [cursor=pointer]
+                - button "2026-07-29" [ref=f1e315] [cursor=pointer]
+                - button "2026-07-30" [ref=f1e316] [cursor=pointer]
+                - button "2026-07-31" [ref=f1e317] [cursor=pointer]
+                - button "2026-08-01" [ref=f1e318] [cursor=pointer]
+              - generic [ref=f1e319]:
+                - button "2026-08-02" [ref=f1e320] [cursor=pointer]
+                - button "2026-08-03" [ref=f1e321] [cursor=pointer]
+                - button "2026-08-04" [ref=f1e322] [cursor=pointer]
+                - button "2026-08-05" [ref=f1e323] [cursor=pointer]
+                - button "2026-08-06" [ref=f1e324] [cursor=pointer]
+                - button "2026-08-07" [ref=f1e325] [cursor=pointer]
+                - button "2026-08-08" [ref=f1e326] [cursor=pointer]
+              - generic [ref=f1e327]:
+                - button "2026-08-09" [ref=f1e328] [cursor=pointer]
+                - button "2026-08-10" [ref=f1e329] [cursor=pointer]
+                - button "2026-08-11" [ref=f1e330] [cursor=pointer]
+                - button "2026-08-12" [ref=f1e331] [cursor=pointer]
+                - button "2026-08-13" [ref=f1e332] [cursor=pointer]
+                - button "2026-08-14" [ref=f1e333] [cursor=pointer]
+                - button "2026-08-15" [ref=f1e334] [cursor=pointer]
+              - generic [ref=f1e335]:
+                - button "2026-08-16" [ref=f1e336] [cursor=pointer]
+                - button "2026-08-17" [ref=f1e337] [cursor=pointer]
+                - button "2026-08-18" [ref=f1e338] [cursor=pointer]
+                - button "2026-08-19" [ref=f1e339] [cursor=pointer]
+                - button "2026-08-20" [ref=f1e340] [cursor=pointer]
+                - button "2026-08-21" [ref=f1e341] [cursor=pointer]
+                - button "2026-08-22" [ref=f1e342] [cursor=pointer]
+              - generic [ref=f1e343]:
+                - button "2026-08-23" [ref=f1e344] [cursor=pointer]
+                - button "2026-08-24" [ref=f1e345] [cursor=pointer]
+                - button "2026-08-25" [ref=f1e346] [cursor=pointer]
+                - button "2026-08-26" [ref=f1e347] [cursor=pointer]
+                - button "2026-08-27" [ref=f1e348] [cursor=pointer]
+                - button "2026-08-28" [ref=f1e349] [cursor=pointer]
+                - button "2026-08-29" [ref=f1e350] [cursor=pointer]
+              - generic [ref=f1e351]:
+                - button "2026-08-30" [ref=f1e352] [cursor=pointer]
+                - button "2026-08-31" [ref=f1e353] [cursor=pointer]
+                - button "2026-09-01" [ref=f1e354] [cursor=pointer]
+                - button "2026-09-02" [ref=f1e355] [cursor=pointer]
+                - button "2026-09-03" [ref=f1e356] [cursor=pointer]
+                - button "2026-09-04" [ref=f1e357] [cursor=pointer]
+                - button "2026-09-05" [ref=f1e358] [cursor=pointer]
+              - generic [ref=f1e359]:
+                - button "2026-09-06" [ref=f1e360] [cursor=pointer]
+                - button "2026-09-07" [ref=f1e361] [cursor=pointer]
+                - button "2026-09-08" [ref=f1e362] [cursor=pointer]
+                - button "2026-09-09" [ref=f1e363] [cursor=pointer]
+                - button "2026-09-10" [ref=f1e364] [cursor=pointer]
+                - button "2026-09-11" [ref=f1e365] [cursor=pointer]
+                - button "2026-09-12" [ref=f1e366] [cursor=pointer]
+              - generic [ref=f1e367]:
+                - button "2026-09-13" [ref=f1e368] [cursor=pointer]
+                - button "2026-09-14" [ref=f1e369] [cursor=pointer]
+                - button "2026-09-15" [ref=f1e370] [cursor=pointer]
+                - button "2026-09-16" [ref=f1e371] [cursor=pointer]
+                - button "2026-09-17" [ref=f1e372] [cursor=pointer]
+                - button "2026-09-18" [ref=f1e373] [cursor=pointer]
+                - button "2026-09-19" [ref=f1e374] [cursor=pointer]
+              - generic [ref=f1e375]:
+                - button "班" [ref=f1e376] [cursor=pointer]
+                - button "2026-09-21" [ref=f1e377] [cursor=pointer]
+                - button "2026-09-22" [ref=f1e378] [cursor=pointer]
+                - button "2026-09-23" [ref=f1e379] [cursor=pointer]
+                - button "2026-09-24" [ref=f1e380] [cursor=pointer]
+                - button "休" [ref=f1e381] [cursor=pointer]
+                - button "休" [ref=f1e382] [cursor=pointer]
+              - generic [ref=f1e383]:
+                - button "休" [ref=f1e384] [cursor=pointer]
+                - button "2026-09-28 · 185 字" [ref=f1e385] [cursor=pointer]
+                - button "2026-09-29" [disabled] [ref=f1e386]
+                - button "2026-09-30" [disabled] [ref=f1e387]
+                - button "休" [disabled] [ref=f1e388]
+                - button "休" [disabled] [ref=f1e389]
+                - button "休" [disabled] [ref=f1e390]
+              - generic [ref=f1e391]:
+                - button "休" [disabled] [ref=f1e392]
+                - button "休" [disabled] [ref=f1e393]
+                - button "休" [disabled] [ref=f1e394]
+                - button "休" [disabled] [ref=f1e395]
+                - button "2026-10-08" [disabled] [ref=f1e396]
+                - button "2026-10-09" [disabled] [ref=f1e397]
+                - button "班" [disabled] [ref=f1e398]
+              - generic [ref=f1e399]:
+                - button "2026-10-11" [disabled] [ref=f1e400]
+                - button "2026-10-12" [disabled] [ref=f1e401]
+                - button "2026-10-13" [disabled] [ref=f1e402]
+                - button "2026-10-14" [disabled] [ref=f1e403]
+                - button "2026-10-15" [disabled] [ref=f1e404]
+                - button "2026-10-16" [disabled] [ref=f1e405]
+                - button "2026-10-17" [disabled] [ref=f1e406]
+              - generic [ref=f1e407]:
+                - button "2026-10-18" [disabled] [ref=f1e408]
+                - button "2026-10-19" [disabled] [ref=f1e409]
+                - button "2026-10-20" [disabled] [ref=f1e410]
+                - button "2026-10-21" [disabled] [ref=f1e411]
+                - button "2026-10-22" [disabled] [ref=f1e412]
+                - button "2026-10-23" [disabled] [ref=f1e413]
+                - button "2026-10-24" [disabled] [ref=f1e414]
+              - generic [ref=f1e415]:
+                - button "2026-10-25" [disabled] [ref=f1e416]
+                - button "2026-10-26" [disabled] [ref=f1e417]
+                - button "2026-10-27" [disabled] [ref=f1e418]
+                - button "2026-10-28" [disabled] [ref=f1e419]
+                - button "2026-10-29" [disabled] [ref=f1e420]
+                - button "2026-10-30" [disabled] [ref=f1e421]
+                - button "2026-10-31" [disabled] [ref=f1e422]
+              - generic [ref=f1e423]:
+                - button "2026-11-01" [disabled] [ref=f1e424]
+                - button "2026-11-02" [disabled] [ref=f1e425]
+                - button "2026-11-03" [disabled] [ref=f1e426]
+                - button "2026-11-04" [disabled] [ref=f1e427]
+                - button "2026-11-05" [disabled] [ref=f1e428]
+                - button "2026-11-06" [disabled] [ref=f1e429]
+                - button "2026-11-07" [disabled] [ref=f1e430]
+              - generic [ref=f1e431]:
+                - button "2026-11-08" [disabled] [ref=f1e432]
+                - button "2026-11-09" [disabled] [ref=f1e433]
+                - button "2026-11-10" [disabled] [ref=f1e434]
+                - button "2026-11-11" [disabled] [ref=f1e435]
+                - button "2026-11-12" [disabled] [ref=f1e436]
+                - button "2026-11-13" [disabled] [ref=f1e437]
+                - button "2026-11-14" [disabled] [ref=f1e438]
+              - generic [ref=f1e439]:
+                - button "2026-11-15" [disabled] [ref=f1e440]
+                - button "2026-11-16" [disabled] [ref=f1e441]
+                - button "2026-11-17" [disabled] [ref=f1e442]
+                - button "2026-11-18" [disabled] [ref=f1e443]
+                - button "2026-11-19" [disabled] [ref=f1e444]
+                - button "2026-11-20" [disabled] [ref=f1e445]
+                - button "2026-11-21" [disabled] [ref=f1e446]
+              - generic [ref=f1e447]:
+                - button "2026-11-22" [disabled] [ref=f1e448]
+                - button "2026-11-23" [disabled] [ref=f1e449]
+                - button "2026-11-24" [disabled] [ref=f1e450]
+                - button "2026-11-25" [disabled] [ref=f1e451]
+                - button "2026-11-26" [disabled] [ref=f1e452]
+                - button "2026-11-27" [disabled] [ref=f1e453]
+                - button "2026-11-28" [disabled] [ref=f1e454]
+              - generic [ref=f1e455]:
+                - button "2026-11-29" [disabled] [ref=f1e456]
+                - button "2026-11-30" [disabled] [ref=f1e457]
+                - button "2026-12-01" [disabled] [ref=f1e458]
+                - button "2026-12-02" [disabled] [ref=f1e459]
+                - button "2026-12-03" [disabled] [ref=f1e460]
+                - button "2026-12-04" [disabled] [ref=f1e461]
+                - button "2026-12-05" [disabled] [ref=f1e462]
+              - generic [ref=f1e463]:
+                - button "2026-12-06" [disabled] [ref=f1e464]
+                - button "2026-12-07" [disabled] [ref=f1e465]
+                - button "2026-12-08" [disabled] [ref=f1e466]
+                - button "2026-12-09" [disabled] [ref=f1e467]
+                - button "2026-12-10" [disabled] [ref=f1e468]
+                - button "2026-12-11" [disabled] [ref=f1e469]
+                - button "2026-12-12" [disabled] [ref=f1e470]
+              - generic [ref=f1e471]:
+                - button "2026-12-13" [disabled] [ref=f1e472]
+                - button "2026-12-14" [disabled] [ref=f1e473]
+                - button "2026-12-15" [disabled] [ref=f1e474]
+                - button "2026-12-16" [disabled] [ref=f1e475]
+                - button "2026-12-17" [disabled] [ref=f1e476]
+                - button "2026-12-18" [disabled] [ref=f1e477]
+                - button "2026-12-19" [disabled] [ref=f1e478]
+              - generic [ref=f1e479]:
+                - button "2026-12-20" [disabled] [ref=f1e480]
+                - button "2026-12-21" [disabled] [ref=f1e481]
+                - button "2026-12-22" [disabled] [ref=f1e482]
+                - button "2026-12-23" [disabled] [ref=f1e483]
+                - button "2026-12-24" [disabled] [ref=f1e484]
+                - button "2026-12-25" [disabled] [ref=f1e485]
+                - button "2026-12-26" [disabled] [ref=f1e486]
+              - generic [ref=f1e487]:
+                - button "2026-12-27" [disabled] [ref=f1e488]
+                - button "2026-12-28" [disabled] [ref=f1e489]
+                - button "2026-12-29" [disabled] [ref=f1e490]
+                - button "2026-12-30" [disabled] [ref=f1e491]
+                - button "2026-12-31" [disabled] [ref=f1e492]
+                - button [disabled] [ref=f1e493]
+                - button [disabled] [ref=f1e494]
+        - generic [ref=f1e495]:
+          - generic [ref=f1e496]: 2026 年 · 已写 2 篇
+          - generic [ref=f1e497]:
+            - generic [ref=f1e498]: 少
+            - generic [ref=f1e504]: 多
+            - generic [ref=f1e505]:
+              - button "日记" [ref=f1e506] [cursor=pointer]
+              - button "节假日" [ref=f1e507] [cursor=pointer]
+              - button "默认" [ref=f1e508] [cursor=pointer]
+            - generic [ref=f1e509]:
+              - generic [ref=f1e510]: 节假日
+              - generic "放假日" [ref=f1e511]
+              - generic "节假日 + 已写日记（默认/日记模式下绿蓝各半）" [ref=f1e512]
+              - generic "调休上班日" [ref=f1e513]

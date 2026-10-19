@@ -31,6 +31,15 @@ export interface Status {
   hasSecurityAnswer?: boolean
 }
 
+declare global {
+  interface Window {
+    myDiary?: {
+      pickPath: (params: { mode: 'folder' | 'exe' | 'archive-save' | 'archive-open'; initial?: string }) =>
+        Promise<{ ok: boolean; path: string | null }>
+    }
+  }
+}
+
 const FETCH_TIMEOUT = 12000
 
 async function req<T>(url: string, init?: RequestInit, timeoutMs?: number): Promise<T> {
@@ -62,7 +71,10 @@ async function req<T>(url: string, init?: RequestInit, timeoutMs?: number): Prom
     ;(err as Error & { locked?: boolean; retryAfterMs?: number }).retryAfterMs = j.retryAfterMs ?? 30000
     throw err
   }
-  if (!res.ok) throw new Error(`请求失败 (${res.status})`)
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.message || `请求失败 (${res.status})`)
+  }
   try {
     return (await res.json()) as T
   } catch {
@@ -97,7 +109,8 @@ export const api = {
     securityAnswer?: string
     unlockToken?: string
   }) => req<{ ok: boolean } & Record<string, unknown>>('/api/config', { method: 'POST', body: JSON.stringify(cfg) }),
-  pickPath: (params: { mode: 'folder' | 'exe'; initial?: string }) => {
+  pickPath: (params: { mode: 'folder' | 'exe' | 'archive-save' | 'archive-open'; initial?: string }) => {
+    if (window.myDiary?.pickPath) return window.myDiary.pickPath(params)
     const q = new URLSearchParams({ mode: params.mode })
     if (params.initial) q.set('initial', params.initial)
     // 不设超时：原生对话框会一直等到用户选完/取消
@@ -133,6 +146,15 @@ export const api = {
       '/api/reset-password',
       { method: 'POST', body: JSON.stringify({ resetToken, newPassword }) },
     ),
-  lock: () => req<{ ok: boolean }>('/api/lock', { method: 'POST' }),
+  exportData: (destination: string, password: string) =>
+    req<{ ok: boolean; diaryCount: number; imageCount: number }>('/api/data-export', {
+      method: 'POST',
+      body: JSON.stringify({ destination, password }),
+    }, 0),
+  importData: (source: string, password: string) =>
+    req<{ ok: boolean; diaryCount: number; imageCount: number }>('/api/data-import', {
+      method: 'POST',
+      body: JSON.stringify({ source, password }),
+    }, 0),
   shutdown: () => req<{ ok: boolean }>('/api/shutdown', { method: 'POST' }),
 }

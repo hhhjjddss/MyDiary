@@ -23,13 +23,6 @@ export function getUnlockToken(): string {
   }
 }
 
-export function lockDiary() {
-  try {
-    sessionStorage.removeItem(GATE_KEY)
-    sessionStorage.removeItem(TOKEN_KEY)
-  } catch {}
-}
-
 type GateView = 'pw' | 'forgot' | 'reset'
 
 /**

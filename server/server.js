@@ -7,6 +7,7 @@ import { spawn, execSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import os from 'node:os'
 import { createStore } from './storage.js'
+import { createMigrationArchive, readMigrationArchive } from './migration.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
@@ -31,9 +32,10 @@ const store = createStore({
 const SECURITY_QUESTION = '你最喜爱的人物是?'
 
 const DEFAULT_CONFIG = {
-  editorPath: 'D:\\Typora\\Typora.exe',
+  editorPath: '',
   diaryDir: DATA_DIR,
   privacyPassword: '1234',
+  privacyPasswordSet: null,
   privacyGateEnabled: true,
   securityAnswer: '',
 }
@@ -45,6 +47,9 @@ const normAnswer = s => String(s || '').trim().toLowerCase()
 
 async function loadConfig() {
   const cfg = await store.readConfig(DEFAULT_CONFIG)
+  if (typeof cfg.privacyPasswordSet !== 'boolean') {
+    cfg.privacyPasswordSet = String(cfg.privacyPassword || '1234') !== '1234'
+  }
   // 数据目录固定为加密仓，避免再指到明文文件夹
   cfg.diaryDir = DATA_DIR
   return cfg
@@ -341,10 +346,6 @@ app.get('/api/holiday', asyncHandler(async (req, res) => {
 app.get('/api/status', asyncHandler(async (req, res) => {
   const cfg = await loadConfig()
   const detected = detectEditor()
-  if (!existsSync(cfg.editorPath) && detected) {
-    cfg.editorPath = detected
-    await saveConfig(cfg)
-  }
   res.json({
     ok: true,
     editorPath: cfg.editorPath,
@@ -379,7 +380,7 @@ app.get('/api/privacy-password', asyncHandler(async (req, res) => {
   res.json({ ok: true, password: String(cfg.privacyPassword || '1234') })
 }))
 
-/** 锁定日记：作废 unlock token */
+/** 隐私门重新锁定：作废解锁 token */
 app.post('/api/lock', (req, res) => {
   unlockSession.token = null
   unlockSession.failCount = 0
@@ -466,6 +467,7 @@ app.post('/api/reset-password', asyncHandler(async (req, res) => {
 /** 保存配置 */
 app.post('/api/config', asyncHandler(async (req, res) => {
   const cfg = await loadConfig()
+  const firstPasswordSet = !cfg.privacyPasswordSet
   const gateIsOn = cfg.privacyGateEnabled !== false
 
   const wantsPassword = typeof req.body.privacyPassword === 'string' && !!req.body.privacyPassword.trim()
@@ -497,6 +499,7 @@ app.post('/api/config', asyncHandler(async (req, res) => {
   }
   if (wantsPassword) {
     cfg.privacyPassword = req.body.privacyPassword.trim()
+    cfg.privacyPasswordSet = true
   }
   if (wantsAnswer) {
     cfg.securityAnswer = req.body.securityAnswer.trim()
@@ -519,6 +522,7 @@ app.post('/api/config', asyncHandler(async (req, res) => {
     diaryDir: cfg.diaryDir,
     privacyGateEnabled: cfg.privacyGateEnabled !== false,
     passwordChanged: wantsPassword,
+    firstPasswordSet: wantsPassword && firstPasswordSet,
   })
 }))
 
@@ -718,8 +722,17 @@ app.get('/api/pick-path', (req, res) => {
   if (process.platform !== 'win32') {
     return res.status(400).json({ ok: false, error: '仅支持 Windows 原生对话框' })
   }
-  const mode = req.query.mode === 'exe' ? 'exe' : 'folder'
-  const title = mode === 'exe' ? '选择编辑器程序' : '选择日记文件夹'
+  const requestedMode = String(req.query.mode || 'folder')
+  const mode = ['exe', 'folder', 'archive-save', 'archive-open'].includes(requestedMode)
+    ? requestedMode
+    : 'folder'
+  const title = mode === 'exe'
+    ? '选择编辑器程序'
+    : mode === 'archive-save'
+    ? '导出 MyDiary 迁移包'
+    : mode === 'archive-open'
+    ? '选择 MyDiary 迁移包'
+    : '选择日记文件夹'
   const initial = typeof req.query.initial === 'string' ? req.query.initial : ''
   const initialDir = mode === 'exe' && initial ? path.dirname(initial) : initial
 
@@ -756,6 +769,17 @@ ${mode === 'exe'
 $f.Title = '${title}'
 $f.Filter = '程序 (*.exe)|*.exe|所有文件 (*.*)|*.*'
 ${initialDir && existsSync(initialDir) ? `$f.InitialDirectory = '${initialDir.replace(/'/g, "''")}'` : ''}`
+  : mode === 'archive-save'
+  ? `$f = New-Object System.Windows.Forms.SaveFileDialog
+$f.Title = '${title}'
+$f.Filter = 'MyDiary 迁移包 (*.mydiary)|*.mydiary'
+$f.DefaultExt = 'mydiary'
+$f.AddExtension = $true`
+  : mode === 'archive-open'
+  ? `$f = New-Object System.Windows.Forms.OpenFileDialog
+$f.Title = '${title}'
+$f.Filter = 'MyDiary 迁移包 (*.mydiary)|*.mydiary'
+$f.CheckFileExists = $true`
   : `$f = New-Object System.Windows.Forms.FolderBrowserDialog
 $f.Description = '${title}'
 $f.ShowNewFolderButton = $true
@@ -766,7 +790,7 @@ try {
   $owner.Close()
 }
 if ($r -eq [System.Windows.Forms.DialogResult]::OK) {
-  if ($f -is [System.Windows.Forms.OpenFileDialog]) { Write-Output $f.FileName }
+  if ($f -is [System.Windows.Forms.OpenFileDialog] -or $f -is [System.Windows.Forms.SaveFileDialog]) { Write-Output $f.FileName }
   else { Write-Output $f.SelectedPath }
 }`
   const b64 = Buffer.from(ps, 'utf16le').toString('base64')
@@ -792,6 +816,75 @@ if ($r -eq [System.Windows.Forms.DialogResult]::OK) {
   }
   req.on('close', () => { replied = true }) // 客户端断开也不再写响应
 })
+
+/** 导出所有日记和照片为可跨设备导入的口令加密文件 */
+app.post('/api/data-export', asyncHandler(async (req, res) => {
+  const password = String(req.body?.password || '')
+  const destination = String(req.body?.destination || '')
+  if (password.length < 8) {
+    return res.status(400).json({ ok: false, message: '迁移文件密码至少需要 8 个字符' })
+  }
+  if (!path.isAbsolute(destination) || !destination.toLowerCase().endsWith('.mydiary')) {
+    return res.status(400).json({ ok: false, message: '请选择 .mydiary 文件保存位置' })
+  }
+
+  const dates = await store.listDates()
+  const diaries = []
+  for (const date of dates) {
+    diaries.push({ date, content: (await store.readDiary(date)) ?? '' })
+  }
+  const imageEntries = await fs.readdir(store.imagesDir, { withFileTypes: true })
+  const images = []
+  for (const entry of imageEntries) {
+    if (!entry.isFile() || entry.name.endsWith('.tmp') || entry.name.includes('..') || entry.name.includes('/') || entry.name.includes('\\')) continue
+    const data = await store.readImage(entry.name)
+    if (data) images.push({ name: entry.name, data: data.toString('base64') })
+  }
+
+  const archive = createMigrationArchive({ diaries, images }, password)
+  if (archive.length > 1024 * 1024 * 1024) {
+    return res.status(400).json({ ok: false, message: '迁移文件超过 1 GB，无法导出' })
+  }
+  await fs.writeFile(destination, archive)
+  res.json({ ok: true, diaryCount: diaries.length, imageCount: images.length })
+}))
+
+/** 导入前完整校验迁移包，校验成功后替换当前日记与图片 */
+app.post('/api/data-import', asyncHandler(async (req, res) => {
+  const password = String(req.body?.password || '')
+  const source = String(req.body?.source || '')
+  if (!password) return res.status(400).json({ ok: false, message: '请输入迁移文件密码' })
+  if (!path.isAbsolute(source) || !source.toLowerCase().endsWith('.mydiary')) {
+    return res.status(400).json({ ok: false, message: '请选择 .mydiary 迁移文件' })
+  }
+
+  let data
+  try {
+    const fileInfo = await fs.stat(source)
+    if (fileInfo.size > 1024 * 1024 * 1024) {
+      return res.status(400).json({ ok: false, message: '迁移文件超过 1 GB，无法导入' })
+    }
+    const archive = await fs.readFile(source)
+    data = readMigrationArchive(archive, password)
+    if (data.diaries.some(diary => !isValidDate(diary.date))) {
+      return res.status(400).json({ ok: false, message: '迁移文件中包含无效日期' })
+    }
+  } catch (err) {
+    const message = err instanceof Error && err.message.startsWith('迁移文件')
+      ? err.message
+      : '无法解密迁移文件，请检查密码或文件是否完整'
+    return res.status(400).json({ ok: false, message })
+  }
+
+  const images = data.images.map(image => ({ name: image.name, data: Buffer.from(image.data, 'base64') }))
+  try {
+    await store.replaceDiariesAndImages(data.diaries, images)
+  } catch (err) {
+    console.error('[migration] 数据导入失败:', err)
+    return res.status(500).json({ ok: false, message: '导入失败，原有日记数据已恢复' })
+  }
+  res.json({ ok: true, diaryCount: data.diaries.length, imageCount: images.length })
+}))
 
 /** 隐私门密码验证：5 次错误锁定 30 秒；成功返回 unlock token */
 app.post('/api/unlock', asyncHandler(async (req, res) => {
@@ -834,34 +927,9 @@ app.post('/api/shutdown', (req, res) => {
   res.json({ ok: true, message: 'shutting down' })
   setTimeout(() => {
     console.log('收到关闭指令，正在停止服务...')
-    if (process.platform === 'win32') {
-      killPort(5399)
-    }
     process.exit(0)
   }, 150)
 })
-
-/** 杀掉监听指定端口的进程（Windows） */
-function killPort(port) {
-  try {
-    const out = execSync('netstat -ano', { encoding: 'utf-8', windowsHide: true })
-    const pids = new Set()
-    for (const line of out.split('\n')) {
-      if (line.includes(`:${port}`) && line.includes('LISTENING')) {
-        const m = line.trim().split(/\s+/)
-        const pid = m[m.length - 1]
-        if (pid && /^\d+$/.test(pid)) pids.add(pid)
-      }
-    }
-    for (const pid of pids) {
-      try { execSync(`taskkill /f /pid ${pid}`, { stdio: 'ignore', windowsHide: true }) } catch (err) {
-        console.error('[killPort] 无法终止进程:', pid, err.message)
-      }
-    }
-  } catch (err) {
-    console.error('[killPort] netstat 执行失败:', err.message)
-  }
-}
 
 /** 统计：总篇数、总字数、连续天数、最长连续 */
 app.get('/api/stats', asyncHandler(async (req, res) => {

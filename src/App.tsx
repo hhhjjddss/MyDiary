@@ -4,7 +4,7 @@ import { Heatmap } from './components/Heatmap'
 import { DiaryModal } from './components/DiaryModal'
 import { Editor } from './components/Editor'
 import { Shiguang } from './components/Shiguang'
-import { Gate, gatePassed, lockDiary, getUnlockToken } from './components/Gate'
+import { Gate, gatePassed, getUnlockToken } from './components/Gate'
 import { BootSplash, BOOT_MS } from './components/BootSplash'
 import { formatCN, weekdayCN, formatNumber, relativeTime, todayStr, formatShort } from './utils'
 import { holidayNameOf } from './festive'
@@ -29,6 +29,17 @@ function writeGateEnabled(on: boolean) {
   } catch {}
 }
 
+function readPasswordReminder(): number | null {
+  try {
+    const value = localStorage.getItem('md-password-reminder')
+    if (value === null) return null
+    const clicks = Number(value)
+    return Number.isInteger(clicks) && clicks >= 0 && clicks < 3 ? clicks : null
+  } catch {
+    return null
+  }
+}
+
 export default function App() {
   const [diaries, setDiaries] = useState<DiaryMeta[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
@@ -43,6 +54,7 @@ export default function App() {
   const [now, setNow] = useState(() => new Date())
   const [gate, setGate] = useState(() => gatePassed())
   const [gateEnabled, setGateEnabled] = useState<boolean | null>(readGateEnabled)
+  const [passwordReminderClicks, setPasswordReminderClicks] = useState<number | null>(readPasswordReminder)
   // 开屏 Logo：必须播在整蛊门之前
   const [bootDone, setBootDone] = useState(false)
   const [showTrend, setShowTrend] = useState(false)
@@ -129,6 +141,18 @@ export default function App() {
 
   const wroteToday = map.has(today) && !map.get(today)!.empty
 
+  const confirmPasswordReminder = () => {
+    if (passwordReminderClicks === null) return
+    if (passwordReminderClicks >= 2) {
+      try { localStorage.removeItem('md-password-reminder') } catch {}
+      setPasswordReminderClicks(null)
+      return
+    }
+    const next = passwordReminderClicks + 1
+    try { localStorage.setItem('md-password-reminder', String(next)) } catch {}
+    setPasswordReminderClicks(next)
+  }
+
   // 编辑器名：取配置路径的文件名去扩展名，如 D:\...\Obsidian.exe → Obsidian
   const editorName = useMemo(() => {
     if (!status?.editorPath) return '外部编辑器'
@@ -171,17 +195,6 @@ export default function App() {
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [])
-
-  // 锁定日记：必须写在任何 early return 之前（Hooks 顺序）
-  const lockNow = useCallback(async () => {
-    lockDiary()
-    setShowSettings(false)
-    // 清服务端解锁 token，防止锁定后旧 token 仍能改密/看密码
-    try { await api.lock() } catch {}
-    // 不整页 reload（避开 bfcache 把已解锁页放回来）；锁定后强制回隐私门
-    setGateEnabled(true)
-    setGate(false)
   }, [])
 
   // 开屏 Logo → 整蛊门 → 主界面（顺序不能反）
@@ -561,7 +574,10 @@ export default function App() {
           status={status}
           onClose={() => setShowSettings(false)}
           onSaved={refresh}
-          onLock={() => void lockNow()}
+          onFirstPasswordSet={() => {
+            try { localStorage.setItem('md-password-reminder', '0') } catch {}
+            setPasswordReminderClicks(0)
+          }}
         />
       )}
 
@@ -572,6 +588,30 @@ export default function App() {
           style={{ borderRadius: 6, background: 'var(--bg)', boxShadow: '0 8px 24px rgba(31,35,40,0.12)' }}
         >
           {toast}
+        </div>
+      )}
+      {passwordReminderClicks !== null && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.68)', backdropFilter: 'blur(5px)' }}
+          onClick={e => e.stopPropagation()}
+        >
+          <div
+            className="c-bg border c-line p-6"
+            style={{ width: 360, maxWidth: '100%', borderRadius: 6, boxShadow: '0 24px 80px rgba(0,0,0,0.38)' }}
+          >
+            <div className="label-xs mb-3" style={{ color: 'var(--warning, #d6a84f)' }}>首次设置完成 · 必读提醒</div>
+            <h3 className="text-[15px] c-fg font-semibold">请妥善保存密码和验证答案</h3>
+            <p className="label-xs mt-3 leading-6">
+              请记住刚设置的 6 位隐私门密码，以及忘记密码时使用的辅助验证答案。遗忘后只能通过该答案重置密码。
+            </p>
+            <div className="mt-5">
+              <button className="btn btn-primary w-full justify-center" onClick={confirmPasswordReminder}>
+                {passwordReminderClicks === 0 ? '我已记录密码（确认 1/3）' : passwordReminderClicks === 1 ? '我已记录验证答案（确认 2/3）' : '我确认已妥善保存（确认 3/3）'}
+              </button>
+              <div className="label-xs text-center mt-3">需要完成三次确认才能关闭</div>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -782,7 +822,7 @@ function MonthlyTrend({ diaries }: { diaries: DiaryMeta[] }) {
   )
 }
 
-function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; onClose: () => void; onSaved: () => void; onLock: () => void }) {
+function SettingsModal({ status, onClose, onSaved, onFirstPasswordSet }: { status: Status; onClose: () => void; onSaved: () => void; onFirstPasswordSet: () => void }) {
   const [editor, setEditor] = useState(status.editorPath)
   const [gateOn, setGateOn] = useState(status.privacyGateEnabled !== false)
   const [busy, setBusy] = useState(false)
@@ -792,6 +832,12 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
   const [pwDialog, setPwDialog] = useState<null | { mode: 'set' | 'off' | 'change' | 'answer'; a: string; b: string; c: string; d: string }>(null)
   const [pwErr, setPwErr] = useState<string | null>(null)
   const [exitAsk, setExitAsk] = useState(false)
+  const [migrationBusy, setMigrationBusy] = useState<null | 'export' | 'import-picker' | 'import'>(null)
+  const [exportPassword, setExportPassword] = useState('')
+  const [exportPasswordConfirm, setExportPasswordConfirm] = useState('')
+  const [importPassword, setImportPassword] = useState('')
+  const [migrationNotice, setMigrationNotice] = useState<string | null>(null)
+
   // 操作结果提示
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const toastTimer = useRef<number | null>(null)
@@ -813,6 +859,56 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
         : msg || '打开系统对话框失败')
     } finally {
       setPicking(false)
+    }
+  }
+
+  const exportData = async () => {
+    if (exportPassword.length < 8) {
+      setMigrationNotice('迁移文件密码至少需要 8 个字符。')
+      return
+    }
+    if (exportPassword !== exportPasswordConfirm) {
+      setMigrationNotice('两次输入的迁移文件密码不一致。')
+      return
+    }
+    setMigrationBusy('export')
+    setMigrationNotice(null)
+    try {
+      const choice = await api.pickPath({ mode: 'archive-save' })
+      if (!choice.path) return
+      const result = await api.exportData(choice.path, exportPassword)
+      setMigrationNotice(`已导出 ${result.diaryCount} 篇日记和 ${result.imageCount} 张图片。请在新设备使用此迁移文件及该密码导入。`)
+      setExportPassword('')
+      setExportPasswordConfirm('')
+    } catch (e) {
+      setMigrationNotice(e instanceof Error ? e.message : '导出失败，请重试。')
+    } finally {
+      setMigrationBusy(null)
+    }
+  }
+
+  const importData = async () => {
+    if (!importPassword) {
+      setMigrationNotice('请输入迁移文件密码。')
+      return
+    }
+    setMigrationBusy('import-picker')
+    setMigrationNotice(null)
+    try {
+      const choice = await api.pickPath({ mode: 'archive-open' })
+      if (!choice.path) return
+      const confirmed = window.confirm('导入会替换本机现有的全部日记和图片，当前配置与隐私门密码会保留。建议先导出备份。确定继续吗？')
+      if (!confirmed) return
+      setMigrationBusy('import')
+      const result = await api.importData(choice.path, importPassword)
+      showToast(`已导入 ${result.diaryCount} 篇日记和 ${result.imageCount} 张图片。`, true)
+      setImportPassword('')
+      await onSaved()
+    } catch (e) {
+      const message = e instanceof Error ? e.message : '请检查迁移文件和密码后重试。'
+      showToast(`导入失败：${message}`, false)
+    } finally {
+      setMigrationBusy(null)
     }
   }
 
@@ -869,6 +965,7 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
     const d = pwDialog.d.trim()
     setBusy(true)
     setPwErr(null)
+    let remindAfterSet = false
     try {
       let token = getUnlockToken()
       if (pwDialog.mode === 'answer') {
@@ -887,13 +984,14 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
         if (!/^\d{6}$/.test(b)) { setPwErr('新密码须为 6 位数字'); return }
         if (b !== c) { setPwErr('两次输入的密码不一致'); return }
         if (!d) { setPwErr('请输入辅助验证答案（用于忘记密码时找回）'); return }
-        await api.saveConfig({
+        const saved = await api.saveConfig({
           editorPath: editor,
           privacyGateEnabled: true,
           privacyPassword: b,
           securityAnswer: d,
           unlockToken: token,
         })
+        remindAfterSet = saved.firstPasswordSet === true
         writeGateEnabled(true)
         setGateOn(true)
         showToast('已开启密码保护', true)
@@ -913,16 +1011,18 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
         const t = await verifyCurrent(a)
         if (!t) return
         token = t
-        await api.saveConfig({
+        const saved = await api.saveConfig({
           editorPath: editor,
           privacyPassword: b,
           ...(d ? { securityAnswer: d } : {}),
           unlockToken: token,
         })
+        remindAfterSet = saved.firstPasswordSet === true
         showToast('密码已修改', true)
       }
       setPwDialog(null)
       onSaved()
+      if (remindAfterSet) onFirstPasswordSet()
     } catch (e) {
       const msg = e instanceof Error ? e.message : ''
       const label =
@@ -954,8 +1054,11 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
       <div
         className="c-bg modal-in border c-line"
         style={{
-          width: 420,
+          width: 460,
           maxWidth: '100%',
+          maxHeight: '88vh',
+          display: 'flex',
+          flexDirection: 'column',
           borderRadius: 4,
           boxShadow: '0 24px 70px rgba(31,35,40,0.2)',
         }}
@@ -966,15 +1069,16 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
           <button onClick={onClose} className="label-xs hover:c-fg p-1">✕</button>
         </div>
 
-        <div className="px-5 py-4 space-y-4">
+        <div className="px-5 py-4 space-y-4 overflow-y-auto">
           <div>
             <label className="label-xs block mb-2">编辑器路径</label>
             <div className="flex items-center gap-2">
               <input
                 value={editor}
                 onChange={e => setEditor(e.target.value)}
+                placeholder="尚未选择编辑器（可留空）"
                 className="mono text-xs c-fg bg-transparent border c-line px-3 py-2.5 outline-none focus:border-current transition-colors flex-1 min-w-0"
-                style={{ borderRadius: 4 }}
+                style={{ borderRadius: 4, caretColor: 'var(--fg)', pointerEvents: 'auto' }}
               />
               <button
                 className="btn btn-ghost shrink-0"
@@ -985,8 +1089,8 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
                 浏览
               </button>
             </div>
-            <div className="label-xs mt-2" style={{ color: status.editorExists ? 'var(--success)' : 'var(--danger)' }}>
-              {status.editorExists ? '✓ 已找到' : '✕ 路径不存在'}
+            <div className="label-xs mt-2" style={{ color: !editor.trim() ? 'var(--fg-2)' : status.editorExists ? 'var(--success)' : 'var(--danger)' }}>
+              {!editor.trim() ? '可选；首次使用时选择外部编辑器' : status.editorExists ? '✓ 已找到' : '✕ 路径不存在'}
             </div>
           </div>
 
@@ -994,7 +1098,7 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
             <div className="flex items-center justify-between px-3 py-2.5">
               <div>
                 <div className="text-[13px] c-fg">打开应用需输入密码</div>
-                <div className="label-xs mt-1">关闭后打开直接进入</div>
+                <div className="label-xs mt-1">开启后，最小化或关闭窗口再打开时需重新输入密码</div>
               </div>
               <button
                 type="button"
@@ -1064,24 +1168,76 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
               </div>
             </div>
           </div>
+
+          <div className="border c-line px-3 py-3 space-y-3" style={{ borderRadius: 4, background: 'var(--bg)' }}>
+            <div>
+              <div className="text-[13px] c-fg">数据迁移</div>
+              <div className="label-xs mt-1">将全部日记和图片打包为口令加密的 .mydiary 文件，可在另一台设备导入。</div>
+            </div>
+            <div className="space-y-2">
+              <label className="label-xs block">导出迁移文件</label>
+              <input
+                value={exportPassword}
+                onChange={e => setExportPassword(e.target.value)}
+                type="password"
+                autoComplete="new-password"
+                placeholder="设置迁移文件密码（至少 8 个字符）"
+                className="w-full text-xs c-fg bg-transparent border c-line px-3 py-2 outline-none focus:border-current transition-colors"
+                style={{ borderRadius: 4, caretColor: 'var(--fg)', pointerEvents: 'auto' }}
+              />
+              <input
+                value={exportPasswordConfirm}
+                onChange={e => setExportPasswordConfirm(e.target.value)}
+                type="password"
+                autoComplete="new-password"
+                placeholder="再次输入迁移文件密码"
+                className="w-full text-xs c-fg bg-transparent border c-line px-3 py-2 outline-none focus:border-current transition-colors"
+                style={{ borderRadius: 4, caretColor: 'var(--fg)', pointerEvents: 'auto' }}
+              />
+              <button className="btn btn-ghost w-full justify-center" onClick={() => void exportData()} disabled={migrationBusy !== null}>
+                {migrationBusy === 'export' ? '正在导出…' : '导出全部日记与图片'}
+              </button>
+            </div>
+            <div className="border-t c-line pt-3 space-y-2">
+              <label className="label-xs block">导入迁移文件</label>
+              <input
+                value={importPassword}
+                onChange={e => setImportPassword(e.target.value)}
+                type="password"
+                autoComplete="current-password"
+                placeholder="输入导出时设置的迁移文件密码"
+                className="w-full text-xs c-fg bg-transparent border c-line px-3 py-2 outline-none focus:border-current transition-colors"
+                style={{ borderRadius: 4, caretColor: 'var(--fg)', pointerEvents: 'auto' }}
+              />
+              <button className="btn btn-ghost w-full justify-center" onClick={() => void importData()} disabled={migrationBusy !== null}>
+                {migrationBusy === 'import' && <span aria-hidden="true" className="migration-spinner" />}
+                {migrationBusy === 'import' ? '正在导入…' : '选择文件并导入'}
+              </button>
+              {migrationBusy === 'import' && (
+                <div className="migration-progress-wrap" role="status" aria-live="polite">
+                  <div className="migration-progress-track"><div className="migration-progress-indicator" /></div>
+                  <div className="label-xs">正在解密并写入日记和图片，请稍候…</div>
+                </div>
+              )}
+              <div className="label-xs">导入会替换本机现有日记和图片；应用设置及隐私门密码保留。</div>
+            </div>
+            {migrationNotice && <div className="label-xs break-words" role="status">{migrationNotice}</div>}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 px-5 py-4 border-t c-line" style={{ background: 'var(--bg-2)' }}>
+        <div className="flex items-center gap-2 px-5 py-4 border-t c-line shrink-0" style={{ background: 'var(--bg-2)' }}>
           <button className="btn btn-primary" onClick={save} disabled={busy}>保存</button>
           <button className="btn btn-ghost" onClick={onClose}>取消</button>
-          <button
-            className="btn btn-ghost"
-            onClick={onLock}
-            title="清除解锁状态并回到隐私门"
-          >
-            锁定日记
-          </button>
           <button
             className="btn btn-danger ml-auto"
             onClick={() => setExitAsk(true)}
           >
             退出
           </button>
+        </div>
+        <div className="label-xs px-5 pb-3 text-center">
+          来自作者 dafen · 欢迎
+          <a className="underline hover:c-fg" href="https://github.com/hhhjjddss/MyDiary" target="_blank" rel="noreferrer">给项目打分</a>
         </div>
       </div>
 
@@ -1228,7 +1384,6 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
                   onClick={async () => {
                     setExitAsk(false)
                     try { await api.shutdown() } catch {}
-                    onLock()
                   }}
                 >
                   完全退出应用
@@ -1262,6 +1417,8 @@ function SettingsModal({ status, onClose, onSaved, onLock }: { status: Status; o
             background: 'var(--bg-2)',
             borderRadius: 6,
             padding: '8px 16px',
+            maxWidth: '90vw',
+            pointerEvents: 'none',
             boxShadow: '0 8px 28px rgba(0,0,0,0.25)',
             color: toast.ok ? 'var(--success)' : 'var(--danger)',
           }}

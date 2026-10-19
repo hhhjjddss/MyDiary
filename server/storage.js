@@ -108,6 +108,50 @@ export function createStore({ dataDir, key }) {
       }
     },
 
+    /** 原子替换日记和图片；配置、密钥仍留在当前设备 */
+    async replaceDiariesAndImages(diaries, images) {
+      const id = randomUUID()
+      const stagedDiaries = path.join(dataDir, `.diaries-${id}`)
+      const stagedImages = path.join(dataDir, `.images-${id}`)
+      const backupDiaries = path.join(dataDir, `.diaries-backup-${id}`)
+      const backupImages = path.join(dataDir, `.images-backup-${id}`)
+      mkdirSync(stagedDiaries, { recursive: true })
+      mkdirSync(stagedImages, { recursive: true })
+      let oldDiariesMoved = false
+      let oldImagesMoved = false
+      let newDiariesMoved = false
+      let newImagesMoved = false
+
+      try {
+        for (const diary of diaries) {
+          await writeEncryptedFile(masterKey, path.join(stagedDiaries, `${diary.date}.enc`), diary.content)
+        }
+        for (const image of images) {
+          await writeEncryptedFile(masterKey, path.join(stagedImages, image.name), image.data)
+        }
+        await fsp.rename(diariesDir, backupDiaries)
+        oldDiariesMoved = true
+        await fsp.rename(imagesDir, backupImages)
+        oldImagesMoved = true
+        await fsp.rename(stagedDiaries, diariesDir)
+        newDiariesMoved = true
+        await fsp.rename(stagedImages, imagesDir)
+        newImagesMoved = true
+      } catch (err) {
+        if (newDiariesMoved) await fsp.rm(diariesDir, { recursive: true, force: true })
+        if (newImagesMoved) await fsp.rm(imagesDir, { recursive: true, force: true })
+        if (oldDiariesMoved) await fsp.rename(backupDiaries, diariesDir)
+        if (oldImagesMoved) await fsp.rename(backupImages, imagesDir)
+        throw err
+      } finally {
+        await fsp.rm(stagedDiaries, { recursive: true, force: true })
+        await fsp.rm(stagedImages, { recursive: true, force: true })
+      }
+
+      await fsp.rm(backupDiaries, { recursive: true, force: true }).catch(() => {})
+      await fsp.rm(backupImages, { recursive: true, force: true }).catch(() => {})
+    },
+
     /** 配置（JSON） */
     async readConfig(fallback) {
       if (!existsSync(configFile)) return { ...fallback }

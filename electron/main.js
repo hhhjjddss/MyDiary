@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, safeStorage, shell } from 'electron'
+import { app, BrowserWindow, Tray, Menu, nativeImage, safeStorage, shell, dialog, ipcMain } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 import net from 'node:net'
@@ -63,6 +63,7 @@ let serverProc = null
 let mainWindow = null
 let tray = null
 let quitting = false
+let lockPromise = null
 
 function iconPath(...parts) {
   return path.join(__dirname, ...parts)
@@ -137,9 +138,7 @@ function createTray() {
       {
         label: '显示主窗口',
         click: () => {
-          if (!mainWindow || mainWindow.isDestroyed()) return createWindow()
-          mainWindow.show()
-          mainWindow.focus()
+          showMainWindow()
         },
       },
       { type: 'separator' },
@@ -153,13 +152,60 @@ function createTray() {
     ])
     tray.setContextMenu(menu)
     tray.on('double-click', () => {
-      if (!mainWindow || mainWindow.isDestroyed()) return createWindow()
-      mainWindow.show()
-      mainWindow.focus()
+      showMainWindow()
     })
   } catch (err) {
     console.error('[tray] fail:', err.message)
   }
+}
+
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createWindow()
+    return
+  }
+  const win = mainWindow
+  Promise.resolve(lockPromise).finally(() => {
+    if (!win.isDestroyed()) {
+      win.show()
+      win.focus()
+    }
+  })
+}
+
+function lockWindowIfEnabled() {
+  if (lockPromise) return lockPromise
+  const win = mainWindow
+  if (!win || win.isDestroyed()) return Promise.resolve()
+
+  lockPromise = (async () => {
+    let gateEnabled = true
+    try {
+      const response = await fetch(`http://127.0.0.1:${API_PORT}/api/status`)
+      if (response.ok) {
+        const status = await response.json()
+        gateEnabled = status.privacyGateEnabled !== false
+      }
+    } catch (err) {
+      console.error('[electron] privacy status unavailable; applying lock:', err)
+    }
+    if (!gateEnabled || win.isDestroyed()) return
+
+    try {
+      await win.webContents.executeJavaScript(`(async () => {
+        sessionStorage.removeItem('md-gate-ok');
+        sessionStorage.removeItem('md-gate-token');
+        try { await fetch('/api/lock', { method: 'POST' }); } catch {}
+        return true;
+      })()`)
+      if (!win.isDestroyed()) win.webContents.reload()
+    } catch (err) {
+      console.error('[electron] privacy lock failed:', err)
+    }
+  })().finally(() => {
+    lockPromise = null
+  })
+  return lockPromise
 }
 
 function createWindow() {
@@ -179,6 +225,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      preload: path.join(__dirname, 'preload.cjs'),
     },
   })
 
@@ -190,8 +237,27 @@ function createWindow() {
   mainWindow.on('close', e => {
     if (!quitting) {
       e.preventDefault()
-      mainWindow.hide()
+      const win = mainWindow
+      void lockWindowIfEnabled().finally(() => {
+        if (win && !win.isDestroyed()) win.hide()
+      })
     }
+  })
+
+  mainWindow.on('minimize', () => {
+    void lockWindowIfEnabled()
+  })
+
+  mainWindow.on('restore', () => {
+    const win = mainWindow
+    if (!lockPromise || !win || win.isDestroyed()) return
+    win.hide()
+    void lockPromise.finally(() => {
+      if (!win.isDestroyed()) {
+        win.show()
+        win.focus()
+      }
+    })
   })
 
   mainWindow.on('closed', () => {
@@ -226,6 +292,33 @@ function createWindow() {
 
   return mainWindow
 }
+
+ipcMain.handle('pick-path', async (_event, { mode, initial } = {}) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return { ok: true, path: null }
+
+  let result
+  if (mode === 'archive-save') {
+    result = await dialog.showSaveDialog(mainWindow, {
+      title: '导出 MyDiary 迁移包',
+      defaultPath: 'MyDiary-backup.mydiary',
+      filters: [{ name: 'MyDiary 迁移包', extensions: ['mydiary'] }],
+    })
+  } else {
+    const options = mode === 'exe'
+      ? { title: '选择编辑器程序', defaultPath: initial || undefined, filters: [{ name: '程序', extensions: ['exe'] }, { name: '所有文件', extensions: ['*'] }], properties: ['openFile'] }
+      : mode === 'archive-open'
+      ? { title: '选择 MyDiary 迁移包', filters: [{ name: 'MyDiary 迁移包', extensions: ['mydiary'] }], properties: ['openFile'] }
+      : { title: '选择日记文件夹', defaultPath: initial || undefined, properties: ['openDirectory', 'createDirectory'] }
+    result = await dialog.showOpenDialog(mainWindow, options)
+  }
+
+  if (!mainWindow.isDestroyed()) {
+    mainWindow.show()
+    mainWindow.focus()
+  }
+  const selectedPath = result.canceled ? null : result.filePath || result.filePaths?.[0] || null
+  return { ok: true, path: selectedPath }
+})
 
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
@@ -266,6 +359,7 @@ if (!gotLock) {
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
+      else showMainWindow()
     })
   })
 

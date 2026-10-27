@@ -1,10 +1,13 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, safeStorage, shell, dialog, ipcMain } from 'electron'
+import { app, BrowserWindow, Tray, Menu, nativeImage, safeStorage, shell, dialog, ipcMain, powerMonitor, Notification } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 import net from 'node:net'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
+
+// Windows 通知需要与安装包 appId 一致，否则系统通知不显示
+if (process.platform === 'win32') app.setAppUserModelId('com.mydiary.local')
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -28,45 +31,78 @@ const ROOT = resolveAppRoot()
 const DATA_DIR = process.env.MYDIARY_DATA_DIR || path.join(app.getPath('userData'), 'data')
 fs.mkdirSync(DATA_DIR, { recursive: true })
 
-/** 主密钥：用系统凭据库（DPAPI/Keychain）包一层 */
+// 每次启动生成一次性令牌：本地服务只接受带此令牌的请求，
+// 避免同机其它进程或网页直接读取日记接口。
+const API_TOKEN = crypto.randomBytes(24).toString('hex')
+
+/**
+ * 主密钥：用系统凭据库（DPAPI/Keychain）包一层。
+ * 密钥文件已存在但解不开时绝不重建——覆盖会让全部密文永久无法解密。
+ */
 function ensureMasterKeyHex() {
   const keyPath = path.join(DATA_DIR, 'key.oscrypt')
-  try {
-    if (fs.existsSync(keyPath)) {
-      const wrapped = fs.readFileSync(keyPath)
-      if (safeStorage.isEncryptionAvailable()) {
-        const hex = safeStorage.decryptString(wrapped)
-        if (/^[0-9a-fA-F]{64}$/.test(hex)) return hex
-      } else {
-        const hex = wrapped.toString('utf8').trim()
-        if (/^[0-9a-fA-F]{64}$/.test(hex)) return hex
+  if (fs.existsSync(keyPath)) {
+    const wrapped = fs.readFileSync(keyPath)
+    let hex = ''
+    if (safeStorage.isEncryptionAvailable()) {
+      try {
+        hex = safeStorage.decryptString(wrapped)
+      } catch (err) {
+        console.error('[key] safeStorage 解密失败:', err.message)
       }
     }
-  } catch (err) {
-    console.error('[key] read fail:', err.message)
-  }
-  const hex = crypto.randomBytes(32).toString('hex')
-  try {
-    if (safeStorage.isEncryptionAvailable()) {
-      fs.writeFileSync(keyPath, safeStorage.encryptString(hex))
-    } else {
-      fs.writeFileSync(keyPath, hex, { mode: 0o600 })
+    if (!/^[0-9a-fA-F]{64}$/.test(hex)) {
+      const raw = wrapped.toString('utf8').trim()
+      if (/^[0-9a-fA-F]{64}$/.test(raw)) hex = raw
     }
+    if (!/^[0-9a-fA-F]{64}$/.test(hex)) {
+      throw new Error(
+        '无法读取本机加密密钥（key.oscrypt）。为避免覆盖导致日记永久无法解密，应用不会自动重建密钥。' +
+        '请备份数据目录，并确认使用原来的系统账户/机器，或恢复原始 key.oscrypt 后再试。',
+      )
+    }
+    return hex
+  }
+
+  const hex = crypto.randomBytes(32).toString('hex')
+  const payload = safeStorage.isEncryptionAvailable()
+    ? safeStorage.encryptString(hex)
+    : hex
+  const tmp = keyPath + '.tmp'
+  try {
+    fs.writeFileSync(tmp, payload, { mode: 0o600 })
+    fs.renameSync(tmp, keyPath)
   } catch (err) {
-    console.error('[key] write fail:', err.message)
+    try { fs.rmSync(tmp, { force: true }) } catch {}
+    throw new Error('无法保存本机加密密钥：' + err.message)
   }
   return hex
 }
 
-const API_PORT = process.env.MYDIARY_API_PORT || '4399'
+let API_PORT = process.env.MYDIARY_API_PORT || ''
 let serverProc = null
 let mainWindow = null
 let tray = null
 let quitting = false
 let lockPromise = null
+let serverStarted = false
 
 function iconPath(...parts) {
   return path.join(__dirname, ...parts)
+}
+
+/** 让系统分配一个空闲的本地端口，避免固定 4399 被占用或连到别的进程 */
+function getFreePort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer()
+    srv.unref()
+    srv.once('error', reject)
+    srv.listen(0, '127.0.0.1', () => {
+      const addr = srv.address()
+      const port = addr && typeof addr === 'object' ? addr.port : 0
+      srv.close(() => (port ? resolve(port) : reject(new Error('无法分配本地端口'))))
+    })
+  })
 }
 
 function waitPort(port, timeoutMs = 15000) {
@@ -94,9 +130,11 @@ function waitPort(port, timeoutMs = 15000) {
  * 都会踩「Cannot use import statement outside a module」或白屏。
  */
 async function startServer() {
+  if (!API_PORT) API_PORT = String(await getFreePort())
   process.env.PORT = API_PORT
   process.env.MYDIARY_DATA_DIR = DATA_DIR
   process.env.MYDIARY_MASTER_KEY = ensureMasterKeyHex()
+  process.env.MYDIARY_API_TOKEN = API_TOKEN
 
   const script = path.join(ROOT, 'server', 'server.js')
   if (!fs.existsSync(script)) {
@@ -111,22 +149,41 @@ async function startServer() {
       PORT: API_PORT,
       MYDIARY_DATA_DIR: DATA_DIR,
       MYDIARY_MASTER_KEY: process.env.MYDIARY_MASTER_KEY,
+      MYDIARY_API_TOKEN: API_TOKEN,
+      // 父进程崩溃时 stdin 管道会关闭，服务据此自行退出，避免留下占着端口的孤儿进程
+      MYDIARY_PARENT_PIPE: '1',
     },
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: ['pipe', 'pipe', 'pipe'],
   })
   serverProc.stdout.on('data', d => process.stdout.write(d))
   serverProc.stderr.on('data', d => process.stderr.write(d))
+  serverProc.stdin?.on('error', () => {})
   serverProc.on('error', err => {
     console.error('[electron] server spawn error:', err)
   })
-  // 服务退出（如网页里的「退出」按钮触发 /api/shutdown）时，应用必须跟随退出，
-  // 否则会留下「界面活着、后端已死」的僵尸窗口，什么都点不动
+  // 服务在启动完成后退出（如网页里的「退出」按钮触发 /api/shutdown）时，应用跟随退出；
+  // 启动阶段退出则由下面的 earlyExit 交给 whenReady 展示错误，不要把错误窗口一起关掉
   serverProc.on('exit', code => {
     console.log('[electron] server exited:', code)
-    if (!quitting) app.quit()
+    if (!quitting && serverStarted) app.quit()
   })
 
-  await waitPort(API_PORT)
+  let onExit
+  let onError
+  const earlyExit = new Promise((_, reject) => {
+    onExit = code => reject(new Error(`本地服务启动失败（退出码 ${code ?? 'unknown'}）`))
+    onError = err => reject(err)
+    serverProc.once('exit', onExit)
+    serverProc.once('error', onError)
+  })
+  earlyExit.catch(() => {})
+  try {
+    await Promise.race([waitPort(API_PORT), earlyExit])
+  } finally {
+    serverProc.removeListener('exit', onExit)
+    serverProc.removeListener('error', onError)
+  }
+  serverStarted = true
 }
 
 function createTray() {
@@ -160,6 +217,7 @@ function createTray() {
 }
 
 function showMainWindow() {
+  if (!serverStarted) return
   if (!mainWindow || mainWindow.isDestroyed()) {
     createWindow()
     return
@@ -181,7 +239,9 @@ function lockWindowIfEnabled() {
   lockPromise = (async () => {
     let gateEnabled = true
     try {
-      const response = await fetch(`http://127.0.0.1:${API_PORT}/api/status`)
+      const response = await fetch(`http://127.0.0.1:${API_PORT}/api/status`, {
+        headers: { 'x-mydiary-token': API_TOKEN },
+      })
       if (response.ok) {
         const status = await response.json()
         gateEnabled = status.privacyGateEnabled !== false
@@ -189,23 +249,134 @@ function lockWindowIfEnabled() {
     } catch (err) {
       console.error('[electron] privacy status unavailable; applying lock:', err)
     }
-    if (!gateEnabled || win.isDestroyed()) return
+    if (!gateEnabled || win.isDestroyed()) return false
 
     try {
       await win.webContents.executeJavaScript(`(async () => {
         sessionStorage.removeItem('md-gate-ok');
         sessionStorage.removeItem('md-gate-token');
-        try { await fetch('/api/lock', { method: 'POST' }); } catch {}
+        const token = window.myDiary && window.myDiary.token;
+        try {
+          await fetch('/api/lock', {
+            method: 'POST',
+            headers: token ? { 'x-mydiary-token': token } : {},
+          });
+        } catch {}
         return true;
       })()`)
-      if (!win.isDestroyed()) win.webContents.reload()
+      if (win.isDestroyed()) return false
+      win.webContents.reload()
+      return true
     } catch (err) {
       console.error('[electron] privacy lock failed:', err)
+      return false
     }
   })().finally(() => {
     lockPromise = null
   })
   return lockPromise
+}
+
+/* ── 空闲自动锁定 & 每日写作提醒 ─────────────────────────────────────────
+ * 设置存在加密配置里，由渲染进程保存；主进程定时从 /api/status 读取。
+ * 这样随机端口导致的 localStorage 丢失、窗口重建都不会影响设置。 */
+const SETTINGS_POLL_MS = 20 * 1000
+let settings = { gateEnabled: true, idleLockMinutes: 0, reminderEnabled: false, reminderTime: '' }
+let settingsLoaded = false
+let settingsTimer = null
+let settingsTicking = false
+let idleArmed = true
+let lastReminderKey = ''
+
+async function syncSettings() {
+  try {
+    const res = await fetch(`http://127.0.0.1:${API_PORT}/api/status`, {
+      headers: { 'x-mydiary-token': API_TOKEN },
+    })
+    if (!res.ok) return
+    const st = await res.json()
+    settings = {
+      gateEnabled: st.privacyGateEnabled !== false,
+      idleLockMinutes: Number(st.idleLockMinutes) || 0,
+      reminderEnabled: st.reminderEnabled === true,
+      reminderTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(st.reminderTime)) ? st.reminderTime : '',
+    }
+    settingsLoaded = true
+  } catch {
+    // 服务短暂不可用时沿用上一次设置
+  }
+}
+
+function checkIdleLock() {
+  if (!settingsLoaded || !settings.gateEnabled || settings.idleLockMinutes <= 0) return
+  const win = mainWindow
+  if (!win || win.isDestroyed() || !win.isVisible()) return
+  const idleSec = powerMonitor.getSystemIdleTime()
+  if (idleSec < 5) {
+    idleArmed = true
+    return
+  }
+  if (!idleArmed || idleSec < settings.idleLockMinutes * 60) return
+  idleArmed = false
+  console.log(`[electron] 空闲 ${settings.idleLockMinutes} 分钟，自动锁定`)
+  void lockWindowIfEnabled().then(locked => {
+    if (locked && !win.isDestroyed()) win.hide()
+  })
+}
+
+function localDate(d) {
+  const p = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+async function hasWrittenOn(date) {
+  try {
+    const res = await fetch(`http://127.0.0.1:${API_PORT}/api/diary/${date}`, {
+      headers: { 'x-mydiary-token': API_TOKEN },
+    })
+    if (!res.ok) return false
+    const data = await res.json()
+    return Boolean(data.exists && String(data.content || '').trim())
+  } catch {
+    return false
+  }
+}
+
+async function checkReminder() {
+  if (!settingsLoaded || !settings.reminderEnabled || !settings.reminderTime) return
+  const now = new Date()
+  const p = n => String(n).padStart(2, '0')
+  const hhmm = `${p(now.getHours())}:${p(now.getMinutes())}`
+  if (hhmm !== settings.reminderTime) return
+  const date = localDate(now)
+  const key = `${date} ${hhmm}`
+  if (lastReminderKey === key) return
+  lastReminderKey = key
+  // 正在使用应用时不打扰
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isFocused()) return
+  // 当天已经写过就不再打扰
+  if (await hasWrittenOn(date)) return
+  if (!Notification.isSupported()) return
+  console.log('[electron] 发送每日写作提醒')
+  const notice = new Notification({
+    title: 'MyDiary',
+    body: '今天还没写日记，花几分钟记一下吧。',
+    icon: iconPath('logo-256.png'),
+  })
+  notice.on('click', () => showMainWindow())
+  notice.show()
+}
+
+async function settingsTick() {
+  if (settingsTicking) return
+  settingsTicking = true
+  try {
+    await syncSettings()
+    checkIdleLock()
+    await checkReminder()
+  } finally {
+    settingsTicking = false
+  }
 }
 
 function createWindow() {
@@ -264,10 +435,21 @@ function createWindow() {
     mainWindow = null
   })
 
+  const appOrigin = `http://127.0.0.1:${API_PORT}`
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
+    try {
+      const u = new URL(url)
+      if (u.protocol === 'http:' || u.protocol === 'https:') void shell.openExternal(url)
+    } catch {}
     return { action: 'deny' }
   })
+
+  // 窗口只允许停留在本地应用页面上，防止被导航到外部页面后拿到 preload 桥接
+  const blockForeignNavigation = (event, url) => {
+    if (url !== appOrigin && !url.startsWith(appOrigin + '/')) event.preventDefault()
+  }
+  mainWindow.webContents.on('will-navigate', blockForeignNavigation)
+  mainWindow.webContents.on('will-redirect', blockForeignNavigation)
 
   // 打包版 / electron 启动：一律走内置服务托管的 dist
   const url = `http://127.0.0.1:${API_PORT}`
@@ -292,6 +474,10 @@ function createWindow() {
 
   return mainWindow
 }
+
+ipcMain.on('mydiary:api-token', event => {
+  event.returnValue = API_TOKEN
+})
 
 ipcMain.handle('pick-path', async (_event, { mode, initial } = {}) => {
   if (!mainWindow || mainWindow.isDestroyed()) return { ok: true, path: null }
@@ -338,6 +524,7 @@ if (!gotLock) {
     createTray()
 
     try {
+      if (!API_PORT) API_PORT = String(await getFreePort())
       await startServer()
     } catch (err) {
       console.error('[electron] local server failed:', err)
@@ -348,7 +535,8 @@ if (!gotLock) {
             `<!doctype html><meta charset="utf-8"><title>MyDiary</title>
              <body style="font-family:system-ui;padding:40px;line-height:1.7">
              <h2>本地服务启动失败</h2>
-             <pre>${String(err && err.message ? err.message : err)}</pre>
+             <pre style="white-space:pre-wrap">${String(err && err.message ? err.message : err)}</pre>
+             <p>为避免覆盖数据，应用不会自动重建密钥或重置配置。请先备份数据目录；可从系统托盘退出。</p>
              </body>`,
           ),
       )
@@ -356,8 +544,11 @@ if (!gotLock) {
     }
 
     createWindow()
+    void settingsTick()
+    settingsTimer = setInterval(() => void settingsTick(), SETTINGS_POLL_MS)
 
     app.on('activate', () => {
+      if (!serverStarted) return
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
       else showMainWindow()
     })
@@ -365,6 +556,10 @@ if (!gotLock) {
 
   app.on('before-quit', () => {
     quitting = true
+    if (settingsTimer) {
+      clearInterval(settingsTimer)
+      settingsTimer = null
+    }
     if (serverProc) {
       try { serverProc.kill() } catch {}
     }

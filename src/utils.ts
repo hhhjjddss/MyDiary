@@ -43,6 +43,17 @@ export function relativeTime(ms: number): string {
   return `${Math.floor(d / 365)} 年前`
 }
 
+/**
+ * 给图片地址补上本地服务的一次性令牌。
+ * <img>/新窗口无法带自定义请求头，而服务端只认令牌，因此走 ?t=。
+ */
+export function withApiToken(url: string): string {
+  if (!/^\/?images\//.test(url)) return url
+  const token = typeof window !== 'undefined' ? window.myDiary?.token : ''
+  if (!token) return url
+  return url + (url.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(token)
+}
+
 /** 极简 Markdown → HTML（支持标题/列表/代码/引用/图片/任务列表） */
 export function renderMarkdown(md: string): string {
   const esc = (s: string) =>
@@ -66,11 +77,11 @@ export function renderMarkdown(md: string): string {
 
   const inline = (t: string) =>
     esc(t)
-      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => `<img src="${escUrl(url)}" alt="${alt}" loading="lazy" />`)
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => `<img src="${escUrl(withApiToken(url))}" alt="${alt}" loading="lazy" />`)
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, txt, url) => {
         // 拦截 javascript: 等危险协议
         const safe = /^(https?:|mailto:|\/|images\/|\.\/|\.\.\/)/.test(url)
-        return safe ? `<a href="${escUrl(url)}" target="_blank" rel="noreferrer">${txt}</a>` : txt
+        return safe ? `<a href="${escUrl(withApiToken(url))}" target="_blank" rel="noreferrer">${txt}</a>` : txt
       })
       .replace(/`([^`]+)`/g, '<code>$1</code>')
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')

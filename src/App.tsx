@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef, type ReactNode } from 'react'
 import { api, type DiaryMeta, type Stats, type Status } from './api'
 import { Heatmap } from './components/Heatmap'
 import { DiaryModal } from './components/DiaryModal'
@@ -48,6 +48,7 @@ export default function App() {
   const [selected, setSelected] = useState<string | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [year, setYear] = useState(() => new Date().getFullYear())
@@ -77,15 +78,27 @@ export default function App() {
   const today = todayStr()
 
   const refresh = useCallback(async () => {
-    const [d, s, st] = await Promise.all([api.diaries(), api.stats(), api.status()])
-    setDiaries(d.diaries ?? [])
-    setStats(s)
-    setStatus(st)
-    const on = st.privacyGateEnabled !== false
-    setGateEnabled(on)
-    writeGateEnabled(on)
-    setLoading(false)
+    try {
+      const [d, s, st] = await Promise.all([api.diaries(), api.stats(), api.status()])
+      setDiaries(d.diaries ?? [])
+      setStats(s)
+      setStatus(st)
+      const on = st.privacyGateEnabled !== false
+      setGateEnabled(on)
+      writeGateEnabled(on)
+      setLoadError(null)
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : '无法读取本地数据')
+    } finally {
+      setLoading(false)
+    }
   }, [])
+
+  const retry = () => {
+    setLoadError(null)
+    setLoading(true)
+    void refresh()
+  }
 
   // 节日提示：完全按节假日 API 当天数据（依赖 today，跨天自动刷新）
   useEffect(() => {
@@ -469,7 +482,9 @@ export default function App() {
               </div>
               <div className="label-xs">点格子查看当天</div>
             </div>
-            {loading ? (
+            {loadError ? (
+              <LoadErrorCard message={loadError} onRetry={retry} />
+            ) : loading ? (
               <div className="label-xs py-16 text-center">读取中…</div>
             ) : (
               <Heatmap diaries={diaries} onSelect={setSelected} selected={selected ?? undefined} year={year} />
@@ -480,7 +495,9 @@ export default function App() {
         {/* 列表：默认「拾光」抽日子，日记列表点按钮再展开 */}
         {view === 'list' && (
           <section className="fade-up">
-            {loading ? (
+            {loadError ? (
+              <LoadErrorCard message={loadError} onRetry={retry} />
+            ) : loading ? (
               <div className="label-xs py-16 text-center">读取中…</div>
             ) : (
               <>
@@ -514,7 +531,13 @@ export default function App() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm c-fg truncate">
-                            {d.empty ? <span className="c-fg3">（空）</span> : d.preview || d.title}
+                            {d.broken ? (
+                              <span style={{ color: 'var(--danger)' }}>（无法解密）</span>
+                            ) : d.empty ? (
+                              <span className="c-fg3">（空）</span>
+                            ) : (
+                              d.preview || d.title
+                            )}
                           </div>
                         </div>
                         <div className="shrink-0 label-xs">{d.words > 0 ? `${formatNumber(d.words)} 字` : '—'}</div>
@@ -558,7 +581,6 @@ export default function App() {
             setSelected(null)
             setEditing(d)
           }}
-          editorName={editorName}
         />
       )}
       {editing && (
@@ -617,6 +639,16 @@ export default function App() {
     </div>
   )
 }
+function LoadErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="card px-6 py-10 text-center" style={{ borderRadius: 10 }}>
+      <div className="text-sm c-fg">无法读取本地数据</div>
+      <div className="label-xs mt-2 break-words" style={{ color: 'var(--danger)' }}>{message}</div>
+      <button className="btn btn-primary mt-4" onClick={onRetry}>重试</button>
+    </div>
+  )
+}
+
 function StatBlock({ label, value, unit, accent }: { label: string; value: string; unit: string; accent?: boolean }) {
   return (
     <div className="px-5 py-4" style={{ background: 'var(--bg)' }}>
@@ -822,11 +854,72 @@ function MonthlyTrend({ diaries }: { diaries: DiaryMeta[] }) {
   )
 }
 
+function PaneHeader({ title, desc }: { title: string; desc: string }) {
+  return (
+    <div className="mb-3">
+      <div className="text-[13px] c-fg font-semibold">{title}</div>
+      <div className="label-xs mt-1 leading-relaxed">{desc}</div>
+    </div>
+  )
+}
+
+function SettingsSection({ children }: { children: ReactNode }) {
+  return (
+    <div className="border c-line" style={{ borderRadius: 6, background: 'var(--bg)' }}>
+      {children}
+    </div>
+  )
+}
+
+function SettingRow({ title, desc, control }: { title: string; desc: string; control: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4 px-3 py-3">
+      <div className="min-w-0">
+        <div className="text-[13px] c-fg">{title}</div>
+        <div className="label-xs mt-1 leading-relaxed">{desc}</div>
+      </div>
+      <div className="shrink-0">{control}</div>
+    </div>
+  )
+}
+
+function Toggle({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={on}
+      style={{
+        width: 38, height: 22, borderRadius: 11, border: 'none', padding: 0,
+        background: on ? 'var(--success)' : 'var(--line)',
+        position: 'relative', cursor: 'pointer', transition: 'background 200ms ease',
+        flexShrink: 0,
+      }}
+    >
+      <span
+        style={{
+          position: 'absolute', top: 2, left: on ? 18 : 2,
+          width: 18, height: 18, borderRadius: '50%', background: '#fff',
+          transition: 'left 200ms cubic-bezier(0.16,1,0.3,1)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+        }}
+      />
+    </button>
+  )
+}
+
 function SettingsModal({ status, onClose, onSaved, onFirstPasswordSet }: { status: Status; onClose: () => void; onSaved: () => void; onFirstPasswordSet: () => void }) {
   const [editor, setEditor] = useState(status.editorPath)
   const [gateOn, setGateOn] = useState(status.privacyGateEnabled !== false)
+  const [idleLock, setIdleLock] = useState(status.idleLockMinutes ?? 0)
+  const [reminderOn, setReminderOn] = useState(status.reminderEnabled === true)
+  const [reminderTime, setReminderTime] = useState(status.reminderTime || '21:00')
   const [busy, setBusy] = useState(false)
   const [picking, setPicking] = useState(false)
+  const [cleaning, setCleaning] = useState(false)
+  const [tab, setTab] = useState<'editor' | 'privacy' | 'auto' | 'data'>('privacy')
+  const editorDirty = editor.trim() !== status.editorPath.trim()
   // 密码弹窗：set=开启时设置密码 / off=关闭时验证 / change=修改密码 / answer=设置辅助验证答案
   // a=当前密码 b=新密码 c=确认新密码 d=辅助验证答案
   const [pwDialog, setPwDialog] = useState<null | { mode: 'set' | 'off' | 'change' | 'answer'; a: string; b: string; c: string; d: string }>(null)
@@ -859,6 +952,19 @@ function SettingsModal({ status, onClose, onSaved, onFirstPasswordSet }: { statu
         : msg || '打开系统对话框失败')
     } finally {
       setPicking(false)
+    }
+  }
+
+  const cleanTemp = async () => {
+    if (!window.confirm('删除外部编辑器留下的明文临时文件？尚未保存到编辑器的内容会丢失。')) return
+    setCleaning(true)
+    try {
+      const r = await api.cleanEditTemp()
+      showToast(r.removed > 0 ? `已清理 ${r.removed} 个临时文件` : '没有可清理的临时文件', true)
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : '清理失败', false)
+    } finally {
+      setCleaning(false)
     }
   }
 
@@ -935,9 +1041,18 @@ function SettingsModal({ status, onClose, onSaved, onFirstPasswordSet }: { statu
   }
 
   const save = async () => {
+    if (reminderOn && !/^([01]\d|2[0-3]):[0-5]\d$/.test(reminderTime)) {
+      window.alert('请选择有效的提醒时间')
+      return
+    }
     setBusy(true)
     try {
-      await api.saveConfig({ editorPath: editor })
+      await api.saveConfig({
+        editorPath: editor,
+        idleLockMinutes: idleLock,
+        reminderEnabled: reminderOn,
+        reminderTime,
+      })
       onSaved()
       onClose()
     } catch (e) {
@@ -1054,190 +1169,322 @@ function SettingsModal({ status, onClose, onSaved, onFirstPasswordSet }: { statu
       <div
         className="c-bg modal-in border c-line"
         style={{
-          width: 460,
+          width: 680,
           maxWidth: '100%',
           maxHeight: '88vh',
           display: 'flex',
           flexDirection: 'column',
-          borderRadius: 4,
+          borderRadius: 6,
+          overflow: 'hidden',
           boxShadow: '0 24px 70px rgba(31,35,40,0.2)',
         }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b c-line">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b c-line shrink-0">
           <h2 className="text-[15px] c-fg font-semibold">设置</h2>
-          <button onClick={onClose} className="label-xs hover:c-fg p-1">✕</button>
+          <button onClick={onClose} className="label-xs hover:c-fg p-1" aria-label="关闭设置">✕</button>
         </div>
 
-        <div className="px-5 py-4 space-y-4 overflow-y-auto">
-          <div>
-            <label className="label-xs block mb-2">编辑器路径</label>
-            <div className="flex items-center gap-2">
-              <input
-                value={editor}
-                onChange={e => setEditor(e.target.value)}
-                placeholder="尚未选择编辑器（可留空）"
-                className="mono text-xs c-fg bg-transparent border c-line px-3 py-2.5 outline-none focus:border-current transition-colors flex-1 min-w-0"
-                style={{ borderRadius: 4, caretColor: 'var(--fg)', pointerEvents: 'auto' }}
-              />
-              <button
-                className="btn btn-ghost shrink-0"
-                style={{ padding: '6px 12px', fontSize: 12, borderRadius: 4 }}
-                disabled={picking}
-                onClick={() => void pick()}
-              >
-                浏览
-              </button>
-            </div>
-            <div className="label-xs mt-2" style={{ color: !editor.trim() ? 'var(--fg-2)' : status.editorExists ? 'var(--success)' : 'var(--danger)' }}>
-              {!editor.trim() ? '可选；首次使用时选择外部编辑器' : status.editorExists ? '✓ 已找到' : '✕ 路径不存在'}
-            </div>
-          </div>
-
-          <div className="border c-line" style={{ borderRadius: 4, background: 'var(--bg)' }}>
-            <div className="flex items-center justify-between px-3 py-2.5">
-              <div>
-                <div className="text-[13px] c-fg">打开应用需输入密码</div>
-                <div className="label-xs mt-1">开启后，最小化或关闭窗口再打开时需重新输入密码</div>
-              </div>
-              <button
-                type="button"
-                onClick={onToggleGate}
-                style={{
-                  width: 38, height: 22, borderRadius: 11,
-                  background: gateOn ? 'var(--success)' : 'var(--line-2)',
-                  position: 'relative', cursor: 'pointer', transition: 'background 200ms ease',
-                  flexShrink: 0, marginLeft: 12,
-                }}
-                aria-label="隐私门开关"
-              >
-                <span
-                  style={{
-                    position: 'absolute', top: 2, left: gateOn ? 18 : 2,
-                    width: 18, height: 18, borderRadius: '50%', background: '#fff',
-                    transition: 'left 200ms cubic-bezier(0.16,1,0.3,1)',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                  }}
-                />
-              </button>
-            </div>
-
-            <div className="border-t c-line px-3 py-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-[13px] c-fg">修改密码</div>
-                  <div className="label-xs mt-1">弹窗内完成，需验证当前密码</div>
-                </div>
+        <div className="flex" style={{ height: 344 }}>
+          <nav
+            className="flex flex-col shrink-0 px-2 py-2.5 border-r c-line"
+            style={{ width: 156, background: 'var(--bg-2)' }}
+            aria-label="设置分区"
+          >
+            {([
+              ['editor', '外部编辑器'],
+              ['privacy', '隐私与密码'],
+              ['auto', '锁定与提醒'],
+              ['data', '数据迁移'],
+            ] as const).map(([key, label]) => {
+              const active = tab === key
+              return (
                 <button
-                  className="btn btn-ghost shrink-0"
-                  style={{ padding: '6px 12px', fontSize: 12, borderRadius: 4 }}
-                  onClick={() => {
-                    setPwErr(null)
-                    setPwDialog({ mode: 'change', a: '', b: '', c: '', d: '' })
+                  key={key}
+                  onClick={() => setTab(key)}
+                  className="text-left text-xs"
+                  style={{
+                    padding: '7px 10px',
+                    marginBottom: 2,
+                    borderRadius: 4,
+                    color: active ? 'var(--fg)' : 'var(--fg-2)',
+                    background: active ? 'var(--bg)' : 'transparent',
+                    boxShadow: active ? 'inset 0 0 0 1px var(--line)' : 'none',
+                    fontWeight: active ? 600 : 400,
+                    transition: 'background 120ms ease, color 120ms ease',
                   }}
                 >
-                  修改密码
+                  {label}
                 </button>
-              </div>
-              <div className="label-xs mt-3">
-                {status.hasSecurityAnswer === false
-                  ? '⚠ 尚未设置辅助验证答案，忘记密码将无法自助找回'
-                  : '忘记密码可在隐私门点击「忘记密码」，回答辅助验证问题后重置。'}
-              </div>
+              )
+            })}
+            <div className="mt-auto px-2 pt-3 label-xs leading-relaxed">
+              来自 dafen
+              <a className="block underline hover:c-fg" href="https://github.com/hhhjjddss/MyDiary" target="_blank" rel="noreferrer">给项目打分</a>
             </div>
+          </nav>
 
-            <div className="border-t c-line px-3 py-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-[13px] c-fg">辅助验证</div>
-                  <div className="label-xs mt-1">
-                    {status.hasSecurityAnswer === false ? '未设置' : '已设置'}
-                    ，忘记密码时回答问题后可重置
+          <div className="flex-1 min-w-0 px-5 py-4" style={{ overflow: 'hidden' }}>
+          {tab === 'editor' && (
+            <div>
+              <PaneHeader
+                title="外部编辑器"
+                desc="写作时可把当天内容交给本地编辑器继续写；阅读始终在应用内完成。"
+              />
+              <SettingsSection>
+                <div className="px-3 py-3">
+                  <label className="label-xs block mb-2" htmlFor="editor-path">编辑器路径</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="editor-path"
+                      value={editor}
+                      onChange={e => setEditor(e.target.value)}
+                      placeholder="尚未选择编辑器（可留空）"
+                      className="mono text-xs c-fg bg-transparent border c-line px-3 py-2.5 outline-none focus:border-current transition-colors flex-1 min-w-0"
+                      style={{ borderRadius: 4, caretColor: 'var(--fg)', pointerEvents: 'auto' }}
+                    />
+                    <button
+                      className="btn btn-ghost shrink-0"
+                      style={{ padding: '6px 12px', fontSize: 12, borderRadius: 4 }}
+                      disabled={picking}
+                      onClick={() => void pick()}
+                    >
+                      浏览
+                    </button>
+                  </div>
+                  <div
+                    className="label-xs mt-2"
+                    style={{
+                      color: !editor.trim()
+                        ? 'var(--fg-2)'
+                        : editorDirty
+                          ? 'var(--fg-2)'
+                          : status.editorExists ? 'var(--success)' : 'var(--danger)',
+                    }}
+                  >
+                    {!editor.trim()
+                      ? '可选；仅用于写作时在外部程序里打开'
+                      : editorDirty
+                        ? '保存后检查该路径'
+                        : status.editorExists ? '✓ 已找到' : '✕ 路径不存在'}
                   </div>
                 </div>
-                <button
-                  className="btn btn-ghost shrink-0"
-                  style={{ padding: '6px 12px', fontSize: 12, borderRadius: 4 }}
-                  onClick={() => {
-                    setPwErr(null)
-                    setPwDialog({ mode: 'answer', a: '', b: '', c: '', d: '' })
-                  }}
-                >
-                  {status.hasSecurityAnswer === false ? '设置答案' : '修改答案'}
-                </button>
-              </div>
+                <div className="border-t c-line px-3 py-3 flex items-start justify-between gap-4">
+                  <span className="label-xs leading-relaxed">外部编辑器会收到明文临时文件，请仅在可信环境使用</span>
+                  <button
+                    className="btn btn-ghost shrink-0"
+                    style={{ padding: '4px 8px', fontSize: 11, borderRadius: 4 }}
+                    disabled={cleaning}
+                    onClick={() => void cleanTemp()}
+                    aria-label="清理临时文件"
+                  >
+                    {cleaning ? '清理中…' : '清理临时文件'}
+                  </button>
+                </div>
+              </SettingsSection>
             </div>
-          </div>
+          )}
 
-          <div className="border c-line px-3 py-3 space-y-3" style={{ borderRadius: 4, background: 'var(--bg)' }}>
+          {tab === 'privacy' && (
             <div>
-              <div className="text-[13px] c-fg">数据迁移</div>
-              <div className="label-xs mt-1">将全部日记和图片打包为口令加密的 .mydiary 文件，可在另一台设备导入。</div>
-            </div>
-            <div className="space-y-2">
-              <label className="label-xs block">导出迁移文件</label>
-              <input
-                value={exportPassword}
-                onChange={e => setExportPassword(e.target.value)}
-                type="password"
-                autoComplete="new-password"
-                placeholder="设置迁移文件密码（至少 8 个字符）"
-                className="w-full text-xs c-fg bg-transparent border c-line px-3 py-2 outline-none focus:border-current transition-colors"
-                style={{ borderRadius: 4, caretColor: 'var(--fg)', pointerEvents: 'auto' }}
+              <PaneHeader
+                title="隐私与密码"
+                desc="最小化或关闭窗口后，再次打开需要输入密码。"
               />
-              <input
-                value={exportPasswordConfirm}
-                onChange={e => setExportPasswordConfirm(e.target.value)}
-                type="password"
-                autoComplete="new-password"
-                placeholder="再次输入迁移文件密码"
-                className="w-full text-xs c-fg bg-transparent border c-line px-3 py-2 outline-none focus:border-current transition-colors"
-                style={{ borderRadius: 4, caretColor: 'var(--fg)', pointerEvents: 'auto' }}
-              />
-              <button className="btn btn-ghost w-full justify-center" onClick={() => void exportData()} disabled={migrationBusy !== null}>
-                {migrationBusy === 'export' ? '正在导出…' : '导出全部日记与图片'}
-              </button>
-            </div>
-            <div className="border-t c-line pt-3 space-y-2">
-              <label className="label-xs block">导入迁移文件</label>
-              <input
-                value={importPassword}
-                onChange={e => setImportPassword(e.target.value)}
-                type="password"
-                autoComplete="current-password"
-                placeholder="输入导出时设置的迁移文件密码"
-                className="w-full text-xs c-fg bg-transparent border c-line px-3 py-2 outline-none focus:border-current transition-colors"
-                style={{ borderRadius: 4, caretColor: 'var(--fg)', pointerEvents: 'auto' }}
-              />
-              <button className="btn btn-ghost w-full justify-center" onClick={() => void importData()} disabled={migrationBusy !== null}>
-                {migrationBusy === 'import' && <span aria-hidden="true" className="migration-spinner" />}
-                {migrationBusy === 'import' ? '正在导入…' : '选择文件并导入'}
-              </button>
-              {migrationBusy === 'import' && (
-                <div className="migration-progress-wrap" role="status" aria-live="polite">
-                  <div className="migration-progress-track"><div className="migration-progress-indicator" /></div>
-                  <div className="label-xs">正在解密并写入日记和图片，请稍候…</div>
+              <SettingsSection>
+                <SettingRow
+                  title="打开应用需输入密码"
+                  desc="开启后，最小化或关闭窗口再打开时需重新输入密码"
+                  control={<Toggle on={gateOn} onClick={onToggleGate} label="隐私门开关" />}
+                />
+                <div className="border-t c-line" />
+                <SettingRow
+                  title="修改密码"
+                  desc="弹窗内完成，需验证当前密码"
+                  control={
+                    <button
+                      className="btn btn-ghost"
+                      style={{ padding: '6px 12px', fontSize: 12, borderRadius: 4 }}
+                      onClick={() => {
+                        setPwErr(null)
+                        setPwDialog({ mode: 'change', a: '', b: '', c: '', d: '' })
+                      }}
+                    >
+                      修改密码
+                    </button>
+                  }
+                />
+                <div className="border-t c-line" />
+                <SettingRow
+                  title="辅助验证"
+                  desc={
+                    status.hasSecurityAnswer === false
+                      ? '未设置；忘记密码时将无法自助找回'
+                      : '已设置；忘记密码时回答问题后可重置'
+                  }
+                  control={
+                    <button
+                      className="btn btn-ghost"
+                      style={{ padding: '6px 12px', fontSize: 12, borderRadius: 4 }}
+                      onClick={() => {
+                        setPwErr(null)
+                        setPwDialog({ mode: 'answer', a: '', b: '', c: '', d: '' })
+                      }}
+                    >
+                      {status.hasSecurityAnswer === false ? '设置答案' : '修改答案'}
+                    </button>
+                  }
+                />
+              </SettingsSection>
+              {status.hasSecurityAnswer === false && (
+                <div className="label-xs mt-3" style={{ color: 'var(--danger)' }}>
+                  ⚠ 尚未设置辅助验证答案，忘记密码将无法自助找回
                 </div>
               )}
-              <div className="label-xs">导入会替换本机现有日记和图片；应用设置及隐私门密码保留。</div>
             </div>
-            {migrationNotice && <div className="label-xs break-words" role="status">{migrationNotice}</div>}
+          )}
+
+          {tab === 'auto' && (
+            <div>
+              <PaneHeader
+                title="锁定与提醒"
+                desc="基于系统空闲时间和本机时间；仅在应用运行时生效。"
+              />
+              <SettingsSection>
+                <SettingRow
+                  title="空闲自动锁定"
+                  desc="无操作达到设定时长后自动锁定并收起窗口（需开启隐私门）"
+                  control={
+                    <select
+                      value={idleLock}
+                      onChange={e => setIdleLock(Number(e.target.value))}
+                      className="text-xs c-fg border c-line px-2 py-1.5 outline-none focus:border-current transition-colors shrink-0"
+                      style={{ borderRadius: 4, background: 'var(--bg)' }}
+                      aria-label="空闲自动锁定时间"
+                    >
+                      <option value={0}>关闭</option>
+                      <option value={5}>5 分钟</option>
+                      <option value={10}>10 分钟</option>
+                      <option value={15}>15 分钟</option>
+                      <option value={30}>30 分钟</option>
+                      <option value={60}>1 小时</option>
+                    </select>
+                  }
+                />
+                <div className="border-t c-line" />
+                <SettingRow
+                  title="每日写作提醒"
+                  desc="到点发送系统通知；当天已经写过则跳过"
+                  control={
+                    <Toggle
+                      on={reminderOn}
+                      onClick={() => setReminderOn(v => !v)}
+                      label="每日写作提醒开关"
+                    />
+                  }
+                />
+                {reminderOn && (
+                  <>
+                    <div className="border-t c-line" />
+                    <SettingRow
+                      title="提醒时间"
+                      desc="使用本机时区"
+                      control={
+                        <input
+                          id="reminder-time"
+                          type="time"
+                          value={reminderTime}
+                          onChange={e => setReminderTime(e.target.value)}
+                          className="mono text-xs c-fg bg-transparent border c-line px-2 py-1.5 outline-none focus:border-current transition-colors"
+                          style={{ borderRadius: 4 }}
+                        />
+                      }
+                    />
+                  </>
+                )}
+              </SettingsSection>
+            </div>
+          )}
+
+          {tab === 'data' && (
+            <div>
+              <PaneHeader
+                title="数据迁移"
+                desc="打包为口令加密的 .mydiary 文件，可在另一台设备导入。"
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="border c-line p-3 flex flex-col gap-2" style={{ borderRadius: 6, background: 'var(--bg)' }}>
+                  <div>
+                    <div className="text-[13px] c-fg">导出</div>
+                    <div className="label-xs mt-1">密码至少 8 个字符，导入时需要</div>
+                  </div>
+                  <input
+                    value={exportPassword}
+                    onChange={e => setExportPassword(e.target.value)}
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="设置迁移文件密码"
+                    className="w-full text-xs c-fg bg-transparent border c-line px-3 py-2 outline-none focus:border-current transition-colors"
+                    style={{ borderRadius: 4, caretColor: 'var(--fg)', pointerEvents: 'auto' }}
+                  />
+                  <input
+                    value={exportPasswordConfirm}
+                    onChange={e => setExportPasswordConfirm(e.target.value)}
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="再次输入密码"
+                    className="w-full text-xs c-fg bg-transparent border c-line px-3 py-2 outline-none focus:border-current transition-colors"
+                    style={{ borderRadius: 4, caretColor: 'var(--fg)', pointerEvents: 'auto' }}
+                  />
+                  <button className="btn btn-ghost w-full justify-center mt-auto" onClick={() => void exportData()} disabled={migrationBusy !== null}>
+                    {migrationBusy === 'export' ? '正在导出…' : '导出全部日记与图片'}
+                  </button>
+                </div>
+
+                <div className="border c-line p-3 flex flex-col gap-2" style={{ borderRadius: 6, background: 'var(--bg)' }}>
+                  <div>
+                    <div className="text-[13px] c-fg">导入</div>
+                    <div className="label-xs mt-1">会替换本机全部日记和图片</div>
+                  </div>
+                  <input
+                    value={importPassword}
+                    onChange={e => setImportPassword(e.target.value)}
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder="输入导出时设置的密码"
+                    className="w-full text-xs c-fg bg-transparent border c-line px-3 py-2 outline-none focus:border-current transition-colors"
+                    style={{ borderRadius: 4, caretColor: 'var(--fg)', pointerEvents: 'auto' }}
+                  />
+                  <button className="btn btn-ghost w-full justify-center" onClick={() => void importData()} disabled={migrationBusy !== null}>
+                    {migrationBusy === 'import' && <span aria-hidden="true" className="migration-spinner" />}
+                    {migrationBusy === 'import' ? '正在导入…' : '选择文件并导入'}
+                  </button>
+                  {migrationBusy === 'import' ? (
+                    <div className="migration-progress-wrap" role="status" aria-live="polite">
+                      <div className="migration-progress-track"><div className="migration-progress-indicator" /></div>
+                      <div className="label-xs">正在解密并写入，请稍候…</div>
+                    </div>
+                  ) : (
+                    <div className="label-xs leading-relaxed mt-auto">应用设置与隐私门密码保留；建议先导出备份。</div>
+                  )}
+                </div>
+              </div>
+              {migrationNotice && <div className="label-xs mt-3 break-words leading-relaxed" role="status">{migrationNotice}</div>}
+            </div>
+          )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 px-5 py-4 border-t c-line shrink-0" style={{ background: 'var(--bg-2)' }}>
+        <div className="flex items-center gap-2 px-5 py-3 border-t c-line shrink-0" style={{ background: 'var(--bg-2)' }}>
           <button className="btn btn-primary" onClick={save} disabled={busy}>保存</button>
           <button className="btn btn-ghost" onClick={onClose}>取消</button>
+          <span className="label-xs ml-1">{tab === 'data' ? '迁移操作立即生效' : '修改后需保存'}</span>
           <button
             className="btn btn-danger ml-auto"
             onClick={() => setExitAsk(true)}
           >
             退出
           </button>
-        </div>
-        <div className="label-xs px-5 pb-3 text-center">
-          来自作者 dafen · 欢迎
-          <a className="underline hover:c-fg" href="https://github.com/hhhjjddss/MyDiary" target="_blank" rel="noreferrer">给项目打分</a>
         </div>
       </div>
 

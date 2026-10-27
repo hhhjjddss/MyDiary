@@ -34,6 +34,19 @@ export function createStore({ dataDir, key }) {
   const diaryPath = date => path.join(diariesDir, `${date}.enc`)
   const imagePath = name => path.join(imagesDir, name)
 
+  // 同一路径的写入串行化，避免自动保存/关闭保存/外部回写并发时旧内容覆盖新内容
+  const writeChains = new Map()
+  function serialize(key, task) {
+    const prev = writeChains.get(key) || Promise.resolve()
+    const run = prev.then(task, task)
+    const guard = run.then(() => {}, () => {})
+    writeChains.set(key, guard)
+    guard.then(() => {
+      if (writeChains.get(key) === guard) writeChains.delete(key)
+    })
+    return run
+  }
+
   return {
     dataDir,
     diariesDir,
@@ -54,7 +67,9 @@ export function createStore({ dataDir, key }) {
 
     /** 写日记（明文入，密文落盘） */
     async writeDiary(date, content) {
-      await writeEncryptedFile(masterKey, diaryPath(date), String(content ?? ''))
+      await serialize(`diary:${date}`, () =>
+        writeEncryptedFile(masterKey, diaryPath(date), String(content ?? '')),
+      )
     },
 
     async deleteDiary(date) {
@@ -88,7 +103,9 @@ export function createStore({ dataDir, key }) {
 
     /** 图片：密文落盘，返回解密后的 Buffer */
     async writeImage(name, buf) {
-      await writeEncryptedFile(masterKey, imagePath(name), buf)
+      await serialize(`image:${name}`, () =>
+        writeEncryptedFile(masterKey, imagePath(name), buf),
+      )
     },
 
     async readImage(name) {
@@ -152,19 +169,31 @@ export function createStore({ dataDir, key }) {
       await fsp.rm(backupImages, { recursive: true, force: true }).catch(() => {})
     },
 
-    /** 配置（JSON） */
+    /** 配置（JSON）：文件存在却读不出来时明确报错，绝不静默回退默认密码 */
     async readConfig(fallback) {
       if (!existsSync(configFile)) return { ...fallback }
+      let raw
       try {
-        const raw = await readEncryptedText(masterKey, configFile)
-        return { ...fallback, ...JSON.parse(raw) }
-      } catch {
-        return { ...fallback }
+        raw = await readEncryptedText(masterKey, configFile)
+      } catch (err) {
+        throw new Error(`配置文件 config.enc 无法解密（${err.message}）`)
       }
+      let parsed
+      try {
+        parsed = JSON.parse(raw)
+      } catch {
+        throw new Error('配置文件 config.enc 格式损坏')
+      }
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('配置文件 config.enc 格式无效')
+      }
+      return { ...fallback, ...parsed }
     },
 
     async writeConfig(cfg) {
-      await writeEncryptedFile(masterKey, configFile, JSON.stringify(cfg, null, 2))
+      await serialize('config', () =>
+        writeEncryptedFile(masterKey, configFile, JSON.stringify(cfg, null, 2)),
+      )
     },
 
     /** 供外部编辑器：解密到临时明文文件，返回路径；写回用 commitExternal */
@@ -172,7 +201,7 @@ export function createStore({ dataDir, key }) {
       const content = (await this.readDiary(date)) ?? ''
       mkdirSync(tmpDir, { recursive: true })
       const tmp = path.join(tmpDir, `MyDiary-${date}-${randomUUID().slice(0, 8)}.md`)
-      await fsp.writeFile(tmp, content, 'utf8')
+      await fsp.writeFile(tmp, content, { encoding: 'utf8', mode: 0o600 })
       return tmp
     },
 

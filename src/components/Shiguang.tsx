@@ -21,7 +21,7 @@ function scrambleDate(): string {
 
 /** 拾光：从过往日记里随机抽出一天 */
 export function Shiguang({ diaries, onSelect }: Props) {
-  const pool = diaries.filter(d => !d.empty)
+  const pool = diaries.filter(d => !d.empty && !d.broken)
   const [rolling, setRolling] = useState(false)
   const [pick, setPick] = useState<DiaryMeta | null>(null)
   const [slot, setSlot] = useState(pool[0]?.date ?? '????-??-??')

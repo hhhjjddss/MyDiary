@@ -1,10 +1,10 @@
 import express from 'express'
 import fs from 'node:fs/promises'
-import { existsSync, mkdirSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, watch, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { spawn, execSync } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
+import { spawn } from 'node:child_process'
+import { randomUUID, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import os from 'node:os'
 import { createStore } from './storage.js'
 import { createMigrationArchive, readMigrationArchive } from './migration.js'
@@ -15,9 +15,15 @@ const ROOT = path.resolve(__dirname, '..')
 const DATA_DIR = process.env.MYDIARY_DATA_DIR || path.join(ROOT, 'data')
 // 旧版明文目录（仅用于一次性迁移）
 const LEGACY_DIR = path.join(ROOT, 'diaries')
-const CONFIG_FILE = path.join(DATA_DIR, 'config.enc')
+
+// 外部编辑器的临时明文目录：启动时清理过期残留
+const EDIT_TMP_DIR = path.join(os.tmpdir(), 'MyDiary-edit')
+const EDIT_IDLE_MS = 30 * 60 * 1000
+const EDIT_TTL_MS = 24 * 60 * 60 * 1000
 
 const PORT = process.env.PORT || 4399
+// Electron 每次启动注入的一次性令牌；纯 Node 开发（无该环境变量）时不校验
+const API_TOKEN = String(process.env.MYDIARY_API_TOKEN || '')
 
 // ---------- 加密数据仓 ----------
 const store = createStore({
@@ -31,13 +37,19 @@ const store = createStore({
 
 const SECURITY_QUESTION = '你最喜爱的人物是?'
 
+const DEFAULT_PASSWORD = '1234'
 const DEFAULT_CONFIG = {
   editorPath: '',
   diaryDir: DATA_DIR,
-  privacyPassword: '1234',
-  privacyPasswordSet: null,
+  privacyPasswordHash: null,
+  privacyPasswordSet: false,
   privacyGateEnabled: true,
-  securityAnswer: '',
+  securityAnswerHash: null,
+  /** 无操作多少分钟后自动回到密码门；0 表示关闭 */
+  idleLockMinutes: 0,
+  reminderEnabled: false,
+  /** 本地时间 HH:mm */
+  reminderTime: '21:00',
 }
 
 /** 密码格式：6 位数字 */
@@ -45,10 +57,51 @@ const PW_PATTERN = /^\d{6}$/
 /** 答案比较：去空格、忽略大小写 */
 const normAnswer = s => String(s || '').trim().toLowerCase()
 
+const SCRYPT_OPTS = { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 }
+
+/** scrypt 哈希，格式 scrypt$saltHex$hashHex */
+function hashSecret(secret) {
+  const salt = randomBytes(16)
+  const hash = scryptSync(String(secret), salt, 32, SCRYPT_OPTS)
+  return `scrypt$${salt.toString('hex')}$${hash.toString('hex')}`
+}
+
+function verifySecret(stored, secret) {
+  if (typeof stored !== 'string') return false
+  const parts = stored.split('$')
+  if (parts.length !== 3 || parts[0] !== 'scrypt') return false
+  try {
+    const salt = Buffer.from(parts[1], 'hex')
+    const expected = Buffer.from(parts[2], 'hex')
+    if (!salt.length || !expected.length) return false
+    const actual = scryptSync(String(secret), salt, expected.length, SCRYPT_OPTS)
+    return actual.length === expected.length && timingSafeEqual(actual, expected)
+  } catch {
+    return false
+  }
+}
+
+function hasSecurityAnswer(cfg) {
+  return Boolean(cfg.securityAnswerHash) || Boolean(normAnswer(cfg.securityAnswer))
+}
+
+function verifyPassword(cfg, password) {
+  if (cfg.privacyPasswordHash) return verifySecret(cfg.privacyPasswordHash, password)
+  // 兼容尚未完成迁移的旧配置
+  if (typeof cfg.privacyPassword === 'string') return password === cfg.privacyPassword
+  return password === DEFAULT_PASSWORD
+}
+
+function verifySecurityAnswer(cfg, answer) {
+  if (cfg.securityAnswerHash) return verifySecret(cfg.securityAnswerHash, normAnswer(answer))
+  const stored = normAnswer(cfg.securityAnswer)
+  return Boolean(stored) && normAnswer(answer) === stored
+}
+
 async function loadConfig() {
   const cfg = await store.readConfig(DEFAULT_CONFIG)
   if (typeof cfg.privacyPasswordSet !== 'boolean') {
-    cfg.privacyPasswordSet = String(cfg.privacyPassword || '1234') !== '1234'
+    cfg.privacyPasswordSet = Boolean(cfg.privacyPasswordHash)
   }
   // 数据目录固定为加密仓，避免再指到明文文件夹
   cfg.diaryDir = DATA_DIR
@@ -56,10 +109,28 @@ async function loadConfig() {
 }
 
 async function saveConfig(cfg) {
-  try {
-    await store.writeConfig({ ...cfg, diaryDir: DATA_DIR })
-  } catch (err) {
-    console.error('[config] 写入配置失败:', err.message)
+  await store.writeConfig({ ...cfg, diaryDir: DATA_DIR })
+}
+
+/** 把旧配置里的明文密码/答案转成哈希并删除明文字段 */
+async function migrateSecretHashes() {
+  const cfg = await store.readConfig(DEFAULT_CONFIG)
+  let changed = false
+  if (typeof cfg.privacyPassword === 'string') {
+    if (cfg.privacyPassword !== DEFAULT_PASSWORD) cfg.privacyPasswordSet = true
+    cfg.privacyPasswordHash = hashSecret(cfg.privacyPassword)
+    delete cfg.privacyPassword
+    changed = true
+  }
+  if (typeof cfg.securityAnswer === 'string') {
+    const normalized = normAnswer(cfg.securityAnswer)
+    if (normalized) cfg.securityAnswerHash = hashSecret(normalized)
+    delete cfg.securityAnswer
+    changed = true
+  }
+  if (changed) {
+    await store.writeConfig({ ...DEFAULT_CONFIG, ...cfg, diaryDir: DATA_DIR })
+    console.log('[migrate] 已将明文密码/验证答案转换为哈希')
   }
 }
 
@@ -103,50 +174,6 @@ async function migrateLegacyConfig() {
   }
 }
 
-/** 自动探测编辑器安装位置（支持 Windows / macOS / Linux） */
-function detectEditor() {
-  const platform = process.platform
-  let candidates = []
-
-  if (platform === 'win32') {
-    candidates = [
-      // 用户常用的本地编辑器；配置里已有路径时不会走这里
-      'D:\\Soft\\obsidian\\Obsidian.exe',
-      path.join(os.homedir(), 'AppData', 'Local', 'Obsidian', 'Obsidian.exe'),
-      'D:\\Typora\\Typora.exe',
-      'C:\\Program Files\\Typora\\Typora.exe',
-      'C:\\Program Files (x86)\\Typora\\Typora.exe',
-      path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'Typora', 'Typora.exe'),
-      path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'Microsoft VS Code', 'Code.exe'),
-    ]
-  } else if (platform === 'darwin') {
-    candidates = [
-      '/Applications/Obsidian.app/Contents/MacOS/Obsidian',
-      '/Applications/Obsidian.app',
-      '/Applications/Typora.app/Contents/MacOS/Typora',
-      '/Applications/Typora.app',
-      '/Applications/Visual Studio Code.app/Contents/MacOS/Electron',
-    ]
-  } else {
-    candidates = [
-      '/usr/bin/obsidian',
-      '/usr/bin/typora',
-      '/usr/local/bin/typora',
-      '/usr/bin/code',
-      path.join(os.homedir(), '.local', 'bin', 'typora'),
-    ]
-  }
-
-  for (const p of candidates) {
-    try {
-      if (existsSync(p)) return p
-    } catch (err) {
-      console.error('[detect] 探测路径异常:', p, err.message)
-    }
-  }
-  return null
-}
-
 /** 确保日记目录存在（启动时同步创建，运行时调用已存在则跳过） */
 function ensureDir(dir) {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
@@ -158,15 +185,6 @@ const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 
 function isValidDate(s) {
   return DATE_RE.test(s)
-}
-
-function filePathFor(date, dir) {
-  return path.join(dir, `${date}.md`)
-}
-
-/** 加密仓里的日记路径（密文） */
-function vaultDiaryPath(date) {
-  return path.join(DATA_DIR, 'diaries', `${date}.enc`)
 }
 
 function formatDate(d) {
@@ -183,7 +201,8 @@ function template(date) {
 // ---------- 应用 ----------
 
 const app = express()
-app.use(express.json())
+// 图片以 dataURL 上传、长日记也走 JSON，默认 100KB 不够用
+app.use(express.json({ limit: '30mb' }))
 
 // 打包后由本服务直接托管前端（Electron 窗口打开 http://127.0.0.1:PORT）
 const DIST_DIR = path.join(ROOT, 'dist')
@@ -194,10 +213,24 @@ if (existsSync(DIST_DIR)) {
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'http://localhost:5399')
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
-  res.header('Access-Control-Allow-Headers', 'Content-Type')
+  res.header('Access-Control-Allow-Headers', 'Content-Type, x-mydiary-token')
   if (req.method === 'OPTIONS') return res.sendStatus(204)
   next()
 })
+
+// 本地服务只接受应用内页面发起的请求：同机其它进程/网页拿不到一次性令牌。
+// API 只认请求头；图片标签无法带头，因此 /images 额外接受 ?t=<token>。
+if (API_TOKEN) {
+  app.use('/api', (req, res, next) => {
+    if (req.get('x-mydiary-token') === API_TOKEN) return next()
+    res.status(401).json({ ok: false, error: 'unauthorized', message: '未授权的本地请求' })
+  })
+  app.use('/images', (req, res, next) => {
+    const provided = req.get('x-mydiary-token') || String(req.query.t || '')
+    if (provided === API_TOKEN) return next()
+    res.status(401).json({ ok: false, error: 'unauthorized', message: '未授权的本地请求' })
+  })
+}
 
 /** 包装异步路由处理器，自动捕获异常 */
 function asyncHandler(fn) {
@@ -345,18 +378,17 @@ app.get('/api/holiday', asyncHandler(async (req, res) => {
 /** 健康检查 + 配置信息 */
 app.get('/api/status', asyncHandler(async (req, res) => {
   const cfg = await loadConfig()
-  const detected = detectEditor()
   res.json({
     ok: true,
     editorPath: cfg.editorPath,
     editorExists: existsSync(cfg.editorPath),
-    detected: detected,
     diaryDir: cfg.diaryDir,
     diaryDirExists: existsSync(cfg.diaryDir),
     privacyGateEnabled: cfg.privacyGateEnabled !== false,
-    // 只告知「已设置密码」，不回传明文；明文走 /api/privacy-password
-    hasPassword: true,
-    hasSecurityAnswer: !!String(cfg.securityAnswer || '').trim(),
+    hasSecurityAnswer: hasSecurityAnswer(cfg),
+    idleLockMinutes: Number(cfg.idleLockMinutes) || 0,
+    reminderEnabled: cfg.reminderEnabled === true,
+    reminderTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(cfg.reminderTime)) ? cfg.reminderTime : '21:00',
   })
 }))
 
@@ -369,21 +401,9 @@ const unlockSession = {
 const UNLOCK_MAX_FAILS = 5
 const UNLOCK_LOCK_MS = 30 * 1000
 
-/** 查看当前隐私门密码（明文）；门开启时需 unlock token */
-app.get('/api/privacy-password', asyncHandler(async (req, res) => {
-  const cfg = await loadConfig()
-  const gateIsOn = cfg.privacyGateEnabled !== false
-  const token = req.get('x-unlock-token') || String(req.query.token || '')
-  if (gateIsOn && (!token || token !== unlockSession.token)) {
-    return res.status(401).json({ ok: false, error: 'privacy-auth-required' })
-  }
-  res.json({ ok: true, password: String(cfg.privacyPassword || '1234') })
-}))
-
-/** 隐私门重新锁定：作废解锁 token */
+/** 隐私门重新锁定：只作废解锁 token，保留失败计数防止借锁定接口绕过限流 */
 app.post('/api/lock', (req, res) => {
   unlockSession.token = null
-  unlockSession.failCount = 0
   securityReset.token = null
   res.json({ ok: true })
 })
@@ -401,7 +421,7 @@ app.get('/api/security-question', asyncHandler(async (req, res) => {
   res.json({
     ok: true,
     question: SECURITY_QUESTION,
-    hasAnswer: !!String(cfg.securityAnswer || '').trim(),
+    hasAnswer: hasSecurityAnswer(cfg),
   })
 }))
 
@@ -417,12 +437,11 @@ app.post('/api/verify-security-answer', asyncHandler(async (req, res) => {
     })
   }
   const cfg = await loadConfig()
-  const stored = normAnswer(cfg.securityAnswer)
-  if (!stored) {
+  if (!hasSecurityAnswer(cfg)) {
     return res.status(404).json({ ok: false, error: 'security-answer-not-set', message: '尚未设置辅助验证答案' })
   }
   const answer = normAnswer(req.body?.answer)
-  if (answer && answer === stored) {
+  if (answer && verifySecurityAnswer(cfg, answer)) {
     securityReset.failCount = 0
     securityReset.token = randomUUID()
     securityReset.expires = now + 10 * 60 * 1000
@@ -455,7 +474,9 @@ app.post('/api/reset-password', asyncHandler(async (req, res) => {
     return res.status(400).json({ ok: false, message: '新密码须为 6 位数字' })
   }
   const cfg = await loadConfig()
-  cfg.privacyPassword = newPassword
+  cfg.privacyPasswordHash = hashSecret(newPassword)
+  delete cfg.privacyPassword
+  cfg.privacyPasswordSet = true
   await saveConfig(cfg)
   // 一次性：用掉 reset token
   securityReset.token = null
@@ -490,24 +511,52 @@ app.post('/api/config', asyncHandler(async (req, res) => {
     }
   }
 
-  if (typeof req.body.editorPath === 'string' && req.body.editorPath.trim()) {
-    cfg.editorPath = req.body.editorPath.trim()
+  // 允许传空字符串清空编辑器路径
+  if (typeof req.body.editorPath === 'string') {
+    const editorPath = req.body.editorPath.trim()
+    if (editorPath) {
+      let st = null
+      try { st = statSync(editorPath) } catch {}
+      const needsExe = process.platform === 'win32'
+      if (!st || !st.isFile() || (needsExe && !/\.exe$/i.test(editorPath))) {
+        return res.status(400).json({
+          ok: false,
+          message: needsExe ? '请选择有效的 .exe 编辑器程序' : '请选择有效的编辑器程序',
+        })
+      }
+    }
+    cfg.editorPath = editorPath
   }
-  if (typeof req.body.diaryDir === 'string' && req.body.diaryDir.trim()) {
-    cfg.diaryDir = req.body.diaryDir.trim()
-    ensureDir(cfg.diaryDir)
+  if (req.body.idleLockMinutes !== undefined) {
+    const n = Number(req.body.idleLockMinutes)
+    if (!Number.isInteger(n) || n < 0 || n > 120) {
+      return res.status(400).json({ ok: false, message: '空闲锁定时间无效' })
+    }
+    cfg.idleLockMinutes = n
+  }
+  if (typeof req.body.reminderEnabled === 'boolean') {
+    cfg.reminderEnabled = req.body.reminderEnabled
+  }
+  if (req.body.reminderTime !== undefined) {
+    const t = String(req.body.reminderTime)
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) {
+      return res.status(400).json({ ok: false, message: '提醒时间格式应为 HH:mm' })
+    }
+    cfg.reminderTime = t
   }
   if (wantsPassword) {
-    cfg.privacyPassword = req.body.privacyPassword.trim()
+    cfg.privacyPasswordHash = hashSecret(req.body.privacyPassword.trim())
+    delete cfg.privacyPassword
     cfg.privacyPasswordSet = true
   }
   if (wantsAnswer) {
-    cfg.securityAnswer = req.body.securityAnswer.trim()
+    cfg.securityAnswerHash = hashSecret(normAnswer(req.body.securityAnswer))
+    delete cfg.securityAnswer
   }
   // 设置/开启密码时必须同时有辅助验证答案，否则忘记密码将无法找回
   const effectiveGateOn = hasGate ? req.body.privacyGateEnabled : (cfg.privacyGateEnabled !== false)
   if ((wantsPassword || wantsGate) && effectiveGateOn) {
-    if (!String(cfg.securityAnswer || '').trim()) {
+    if (!hasSecurityAnswer(cfg)) {
       return res.status(400).json({ ok: false, message: '请先设置辅助验证答案' })
     }
   }
@@ -521,6 +570,9 @@ app.post('/api/config', asyncHandler(async (req, res) => {
     editorPath: cfg.editorPath,
     diaryDir: cfg.diaryDir,
     privacyGateEnabled: cfg.privacyGateEnabled !== false,
+    idleLockMinutes: Number(cfg.idleLockMinutes) || 0,
+    reminderEnabled: cfg.reminderEnabled === true,
+    reminderTime: cfg.reminderTime,
     passwordChanged: wantsPassword,
     firstPasswordSet: wantsPassword && firstPasswordSet,
   })
@@ -532,16 +584,25 @@ app.get('/api/diaries', asyncHandler(async (req, res) => {
   const list = []
   for (const date of dates) {
     if (!isValidDate(date)) continue
-    const content = (await store.readDiary(date)) ?? ''
-    const body = content.replace(/^#\s+.*\n+/, '').trim()
+    // 单篇损坏不应让整个列表 500
+    let content = ''
+    let broken = false
+    try {
+      content = (await store.readDiary(date)) ?? ''
+    } catch (err) {
+      broken = true
+      console.error('[diaries] 无法解密', date, err.message)
+    }
+    const body = broken ? '' : content.replace(/^#\s+.*\n+/, '').trim()
     list.push({
       date,
-      title: extractTitle(content, date),
+      title: broken ? date : extractTitle(content, date),
       chars: body.length,
       words: countWords(body),
-      preview: body.replace(/[#*`>\-\[\]]/g, '').slice(0, 80),
+      preview: broken ? '' : body.replace(/[#*`>\-\[\]]/g, '').slice(0, 80),
       mtime: await store.diaryMtime(date),
-      empty: body.length === 0,
+      empty: !broken && body.length === 0,
+      broken,
     })
   }
   list.sort((a, b) => b.date.localeCompare(a.date))
@@ -552,7 +613,13 @@ app.get('/api/diaries', asyncHandler(async (req, res) => {
 app.get('/api/diary/:date', asyncHandler(async (req, res) => {
   const { date } = req.params
   if (!isValidDate(date)) return res.status(400).json({ ok: false, error: 'invalid date' })
-  const content = await store.readDiary(date)
+  let content
+  try {
+    content = await store.readDiary(date)
+  } catch (err) {
+    console.error('[diary] 无法解密', date, err.message)
+    return res.status(500).json({ ok: false, message: '这篇日记无法解密，文件可能已损坏' })
+  }
   if (content == null) {
     return res.json({ ok: true, exists: false, date, content: '' })
   }
@@ -613,80 +680,151 @@ app.post('/api/open', asyncHandler(async (req, res) => {
   const cfg = await loadConfig()
   const editor = cfg.editorPath
   // 解密到系统临时目录，供外部编辑器使用；程序本身不保存明文
-  const tmpDir = path.join(os.tmpdir(), 'MyDiary-edit')
-  const tmpFile = await store.exportPlain(date, tmpDir)
+  const tmpFile = await store.exportPlain(date, EDIT_TMP_DIR)
 
-  // 轻量回写：监视临时文件，保存后写回加密仓
+  watchEditFile(tmpFile, date)
+
   try {
-    const { watch } = await import('node:fs')
-    let timer = null
-    const w = watch(tmpFile, { persistent: false }, async () => {
-      if (timer) clearTimeout(timer)
-      timer = setTimeout(async () => {
+    await launchEditor(tmpFile, editor)
+    res.json({ ok: true, created, path: tmpFile, editor })
+  } catch (e) {
+    console.error('[open] 启动编辑器失败:', e.message)
+    // 启动失败就不要把明文留在临时目录：停掉监视并删除快照
+    editWatchers.get(date)?.close()
+    try { await fs.rm(tmpFile, { force: true }) } catch {}
+    res.status(500).json({
+      ok: false,
+      message: '无法启动外部编辑器，请检查设置中的编辑器路径',
+      error: String(e),
+    })
+  }
+}))
+
+// 同一天重复打开时只保留一个监视器
+const editWatchers = new Map()
+
+/**
+ * 监视临时明文并回写加密仓。
+ * 盯目录而不是单文件：编辑器保存常用「写临时文件 + rename」的原子替换，
+ * 单文件 watch 会在第一次保存后失效。事件按文件名过滤。
+ * 每次改动重置 30 分钟静默计时，静默超时后停止监视。
+ */
+function watchEditFile(tmpFile, date) {
+  const prev = editWatchers.get(date)
+  if (prev) prev.close()
+
+  const base = path.basename(tmpFile)
+  let debounce = null
+  let idle = null
+  let watcher = null
+  const close = () => {
+    if (debounce) clearTimeout(debounce)
+    if (idle) clearTimeout(idle)
+    try { watcher?.close() } catch {}
+    editWatchers.delete(date)
+  }
+
+  try {
+    watcher = watch(EDIT_TMP_DIR, { persistent: false }, (_event, filename) => {
+      if (filename && String(filename) !== base) return
+      if (debounce) clearTimeout(debounce)
+      if (idle) clearTimeout(idle)
+      debounce = setTimeout(async () => {
         try {
           await store.commitExternal(tmpFile, date)
         } catch (err) {
           console.error('[open] 回写失败:', err.message)
         }
+        idle = setTimeout(close, EDIT_IDLE_MS)
+        idle.unref?.()
       }, 800)
     })
-    w.unref?.()
-    // 5 分钟后停止监视
-    setTimeout(() => w.close(), 5 * 60 * 1000).unref?.()
+    watcher.on('error', err => {
+      console.error('[open] 监视失败:', err.message)
+      close()
+    })
+    watcher.unref?.()
+    // 打开后即使一次都没保存，也要在空闲超时后关闭
+    idle = setTimeout(close, EDIT_IDLE_MS)
+    idle.unref?.()
+    editWatchers.set(date, { close })
   } catch (err) {
     console.error('[open] 监视临时文件失败:', err.message)
   }
+}
 
+/** 清理上次异常退出遗留的临时明文，避免长期留在系统临时目录 */
+async function cleanStaleEditFiles() {
+  let names
   try {
-    launchEditor(tmpFile, editor)
-    res.json({ ok: true, created, path: tmpFile, editor })
-  } catch (e) {
-    console.error('[open] 异常:', e)
-    res.status(500).json({ ok: false, error: String(e), path: tmpFile })
+    names = await fs.readdir(EDIT_TMP_DIR)
+  } catch {
+    return
   }
+  const now = Date.now()
+  for (const name of names) {
+    const full = path.join(EDIT_TMP_DIR, name)
+    try {
+      const st = await fs.stat(full)
+      if (st.isFile() && now - st.mtimeMs > EDIT_TTL_MS) {
+        await fs.rm(full, { force: true })
+      }
+    } catch {
+      // 文件可能已被编辑器/清理进程删除
+    }
+  }
+}
+
+/** 停止外部编辑回写并删除临时明文快照，返回删除的文件数 */
+async function clearEditTemp() {
+  for (const w of editWatchers.values()) w.close()
+  editWatchers.clear()
+  let removed = 0
+  try {
+    const names = await fs.readdir(EDIT_TMP_DIR)
+    for (const name of names) {
+      const full = path.join(EDIT_TMP_DIR, name)
+      try {
+        const st = await fs.stat(full)
+        if (!st.isFile()) continue
+        await fs.rm(full, { force: true })
+        removed++
+      } catch {}
+    }
+  } catch {}
+  return removed
+}
+
+/** 清空外部编辑器遗留的明文临时文件；会停止回写监视，需确认编辑器已关闭 */
+app.post('/api/edit-temp/clean', asyncHandler(async (_req, res) => {
+  res.json({ ok: true, removed: await clearEditTemp() })
 }))
 
 /**
- * 优先用配置的编辑器打开；未配置/不存在时回退系统关联（explorer）。
- *
- * 回退 explorer 的原因（保留历史行为）：
- *   1. 老版本 Electron 应用（如 Typora 0.9.x）脱离桌面会话启动时，
- *      会因拿不到窗口焦点而自动退出。explorer 打开可携带完整桌面会话。
- *   2. 绝不在请求路径上使用 execSync（注册表查询等同步调用会阻塞
- *      事件循环，导致所有接口无响应——曾因此出现"读取中…"卡死）。
+ * 用配置的编辑器打开临时明文；未配置时交给系统关联程序。
+ * 配置了却启动失败必须报错——静默回退会让用户以为在用 Typora，实际打开了别的程序。
+ * 不在请求路径上使用同步的外部命令（会阻塞事件循环）。
  */
-function launchEditor(filePath, editorPath) {
-  const useConfigured = Boolean(editorPath && existsSync(editorPath))
-
-  if (process.platform === 'win32') {
-    let child
-    if (useConfigured) {
-      // 指定编辑器（Typora / Obsidian / VS Code…），直接带上文件路径启动
-      child = spawn(editorPath, [filePath], { detached: true, stdio: 'ignore' })
-      child.on('error', err => {
-        console.error('[open] 编辑器启动失败，回退 explorer:', editorPath, err.message)
-        const fb = spawn('explorer', [filePath], { detached: true, stdio: 'ignore' })
-        fb.on('error', e2 => console.error('[open] explorer 启动失败:', e2.message))
-        fb.unref()
-      })
-    } else {
-      child = spawn('explorer', [filePath], { detached: true, stdio: 'ignore' })
-      child.on('error', err => console.error('[open] explorer 启动失败:', err.message))
-    }
-    child.unref()
-  } else if (process.platform === 'darwin') {
-    const child = useConfigured
-      ? spawn(editorPath, [filePath], { detached: true, stdio: 'ignore' })
-      : spawn('open', [filePath], { detached: true, stdio: 'ignore' })
-    child.on('error', err => console.error('[open] 启动失败:', err.message))
-    child.unref()
-  } else {
-    const child = useConfigured
-      ? spawn(editorPath, [filePath], { detached: true, stdio: 'ignore' })
-      : spawn('xdg-open', [filePath], { detached: true, stdio: 'ignore' })
-    child.on('error', err => console.error('[open] 启动失败:', err.message))
-    child.unref()
+async function launchEditor(filePath, editorPath) {
+  const configured = Boolean(editorPath && editorPath.trim())
+  if (configured && !existsSync(editorPath)) {
+    throw new Error('编辑器路径不存在，请在设置中重新选择')
   }
+  const cmd = configured
+    ? editorPath
+    : process.platform === 'win32'
+    ? 'explorer'
+    : process.platform === 'darwin'
+    ? 'open'
+    : 'xdg-open'
+
+  const child = spawn(cmd, [filePath], { detached: true, stdio: 'ignore' })
+  child.on('error', () => {})
+  await new Promise((resolve, reject) => {
+    child.once('spawn', resolve)
+    child.once('error', reject)
+  })
+  child.unref()
 }
 
 /** 在文件管理器中定位加密数据目录（不暴露明文） */
@@ -828,17 +966,39 @@ app.post('/api/data-export', asyncHandler(async (req, res) => {
     return res.status(400).json({ ok: false, message: '请选择 .mydiary 文件保存位置' })
   }
 
+  // 单篇损坏不应让整个备份失败，但也不能静默跳过——会导出不完整的数据
   const dates = await store.listDates()
   const diaries = []
+  const brokenDiaries = []
   for (const date of dates) {
-    diaries.push({ date, content: (await store.readDiary(date)) ?? '' })
+    try {
+      diaries.push({ date, content: (await store.readDiary(date)) ?? '' })
+    } catch {
+      brokenDiaries.push(date)
+    }
   }
   const imageEntries = await fs.readdir(store.imagesDir, { withFileTypes: true })
   const images = []
+  const brokenImages = []
   for (const entry of imageEntries) {
     if (!entry.isFile() || entry.name.endsWith('.tmp') || entry.name.includes('..') || entry.name.includes('/') || entry.name.includes('\\')) continue
-    const data = await store.readImage(entry.name)
-    if (data) images.push({ name: entry.name, data: data.toString('base64') })
+    try {
+      const data = await store.readImage(entry.name)
+      if (data) images.push({ name: entry.name, data: data.toString('base64') })
+    } catch {
+      brokenImages.push(entry.name)
+    }
+  }
+  if (brokenDiaries.length || brokenImages.length) {
+    const parts = []
+    if (brokenDiaries.length) {
+      parts.push(`${brokenDiaries.length} 篇日记无法解密（${brokenDiaries.slice(0, 3).join('、')}${brokenDiaries.length > 3 ? ' 等' : ''}）`)
+    }
+    if (brokenImages.length) parts.push(`${brokenImages.length} 张图片无法解密`)
+    return res.status(400).json({
+      ok: false,
+      message: `导出已取消：${parts.join('，')}。请先在列表中删除损坏的日记后再导出`,
+    })
   }
 
   const archive = createMigrationArchive({ diaries, images }, password)
@@ -858,12 +1018,18 @@ app.post('/api/data-import', asyncHandler(async (req, res) => {
     return res.status(400).json({ ok: false, message: '请选择 .mydiary 迁移文件' })
   }
 
+  let fileInfo
+  try {
+    fileInfo = await fs.stat(source)
+  } catch {
+    return res.status(400).json({ ok: false, message: '找不到迁移文件，请重新选择' })
+  }
+  if (fileInfo.size > 1024 * 1024 * 1024) {
+    return res.status(400).json({ ok: false, message: '迁移文件超过 1 GB，无法导入' })
+  }
+
   let data
   try {
-    const fileInfo = await fs.stat(source)
-    if (fileInfo.size > 1024 * 1024 * 1024) {
-      return res.status(400).json({ ok: false, message: '迁移文件超过 1 GB，无法导入' })
-    }
     const archive = await fs.readFile(source)
     data = readMigrationArchive(archive, password)
     if (data.diaries.some(diary => !isValidDate(diary.date))) {
@@ -877,6 +1043,8 @@ app.post('/api/data-import', asyncHandler(async (req, res) => {
   }
 
   const images = data.images.map(image => ({ name: image.name, data: Buffer.from(image.data, 'base64') }))
+  // 先停掉外部编辑回写并清掉旧快照，否则编辑器稍后保存会把导入前的内容写回来
+  await clearEditTemp()
   try {
     await store.replaceDiariesAndImages(data.diaries, images)
   } catch (err) {
@@ -900,7 +1068,7 @@ app.post('/api/unlock', asyncHandler(async (req, res) => {
 
   const cfg = await loadConfig()
   const pw = String(req.body?.password ?? '')
-  if (pw && pw === String(cfg.privacyPassword || '1234')) {
+  if (pw && verifyPassword(cfg, pw)) {
     unlockSession.failCount = 0
     unlockSession.lockedUntil = 0
     unlockSession.token = randomUUID()
@@ -938,19 +1106,28 @@ app.get('/api/stats', asyncHandler(async (req, res) => {
   let totalWords = 0
   let writtenDays = 0
 
-  for (const date of dates) {
-    if (!isValidDate(date)) continue
-    const content = (await store.readDiary(date)) ?? ''
+  const validDates = dates.filter(isValidDate).sort()
+  const writtenDates = []
+  for (const date of validDates) {
+    let content = ''
+    try {
+      content = (await store.readDiary(date)) ?? ''
+    } catch (err) {
+      console.error('[stats] 无法解密', date, err.message)
+      continue
+    }
     const body = content.replace(/^#\s+.*\n+/, '').trim()
     const chars = body.length
-    const words = countWords(body)
     totalChars += chars
-    totalWords += words
-    if (chars > 0) writtenDays++
+    totalWords += countWords(body)
+    if (chars > 0) {
+      writtenDays++
+      writtenDates.push(date)
+    }
   }
 
-  const validDates = dates.filter(isValidDate).sort()
-  const { current, longest } = computeStreaks(validDates)
+  // 连续天数只按真正写了内容的日期计算，与「已写」口径保持一致
+  const { current, longest } = computeStreaks(writtenDates)
 
   res.json({
     ok: true,
@@ -967,6 +1144,20 @@ app.get('/api/stats', asyncHandler(async (req, res) => {
 
 /** 全局错误处理 */
 app.use((err, req, res, _next) => {
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({
+      ok: false,
+      error: 'payload too large',
+      message: '内容过大：单次提交上限 30MB，请压缩图片或分次保存长文',
+    })
+  }
+  if (err?.type === 'entity.parse.failed') {
+    return res.status(400).json({ ok: false, error: 'invalid json' })
+  }
+  const status = Number(err?.status || err?.statusCode)
+  if (status >= 400 && status < 500) {
+    return res.status(status).json({ ok: false, error: err.message || '请求无效' })
+  }
   console.error('[server] 未捕获异常:', err)
   res.status(500).json({ ok: false, error: '服务器内部错误' })
 })
@@ -1022,16 +1213,49 @@ function computeStreaks(sortedDates) {
 
 // ---------- 启动 ----------
 
-await migrateLegacyConfig()
-await migrateLegacyDiaries()
-const cfg = await loadConfig()
-ensureDir(DATA_DIR)
+async function bootstrap() {
+  await migrateLegacyConfig()
+  await migrateLegacyDiaries()
+  await migrateSecretHashes()
+  await cleanStaleEditFiles()
+  ensureDir(DATA_DIR)
+  return loadConfig()
+}
 
-app.listen(PORT, '127.0.0.1', () => {
+/** Electron 退出后，管道断开即退出，避免残留后台服务 */
+function watchParentPipe() {
+  if (!process.env.MYDIARY_PARENT_PIPE) return
+  process.stdin.resume()
+  process.stdin.on('end', () => {
+    console.log('父进程已退出，本地服务停止')
+    process.exit(0)
+  })
+  process.stdin.on('error', () => process.exit(0))
+}
+
+let cfg
+try {
+  cfg = await bootstrap()
+} catch (err) {
+  console.error('')
+  console.error('  MyDiary 启动失败：' + (err?.message || err))
+  console.error('  为避免覆盖数据，服务已停止；请先备份数据目录再排查。')
+  console.error('')
+  process.exit(1)
+}
+
+watchParentPipe()
+
+const server = app.listen(PORT, '127.0.0.1', () => {
   console.log('')
   console.log('  MyDiary 本地服务已启动')
   console.log(`  接口地址  http://127.0.0.1:${PORT}`)
   console.log(`  加密数据  ${DATA_DIR}`)
   console.log(`  编辑器    ${cfg.editorPath}`)
   console.log('')
+})
+
+server.on('error', err => {
+  console.error('  MyDiary 本地服务启动失败：' + err.message)
+  process.exit(1)
 })

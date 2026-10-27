@@ -7,10 +7,9 @@ interface Props {
   onClose: () => void
   onChanged: () => void
   onEdit: (date: string) => void
-  editorName: string
 }
 
-export function DiaryModal({ date, onClose, onChanged, onEdit, editorName }: Props) {
+export function DiaryModal({ date, onClose, onChanged, onEdit }: Props) {
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -48,19 +47,6 @@ export function DiaryModal({ date, onClose, onChanged, onEdit, editorName }: Pro
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
-
-  const openEditor = async () => {
-    setBusy(true)
-    setLocalError(null)
-    try {
-      const r = await api.open(date)
-      if (!r.ok) setLocalError(r.message || '打开失败，请检查编辑器路径设置')
-    } catch (e) {
-      setLocalError(e instanceof Error ? e.message : '打开失败，请检查本地服务')
-    } finally {
-      setBusy(false)
-    }
-  }
 
   const remove = async () => {
     setBusy(true)
@@ -127,6 +113,12 @@ export function DiaryModal({ date, onClose, onChanged, onEdit, editorName }: Pro
           )}
           {loading ? (
             <div className="label-xs py-8 text-center">读取中…</div>
+          ) : error ? (
+            <div className="py-10 text-center">
+              <div className="text-sm" style={{ color: 'var(--danger)' }}>{error}</div>
+              <p className="label-xs mt-2">为避免覆盖，这篇日记不会被自动改写；建议先备份数据目录。</p>
+              <button className="btn btn-ghost mt-4" onClick={() => load()}>重试</button>
+            </div>
           ) : !exists || body.length === 0 ? (
             <div className="py-10 text-center">
               <div className="text-3xl c-fg3 mb-3" style={{ opacity: 0.4 }}>—</div>
@@ -145,15 +137,6 @@ export function DiaryModal({ date, onClose, onChanged, onEdit, editorName }: Pro
           <button className="btn btn-primary" onClick={() => onEdit(date)}>
             {exists && body.length > 0 ? '编辑' : '写这一天的日记'}
           </button>
-          {exists && body.length > 0 && (
-            <button
-              className="btn btn-ghost"
-              onClick={() => void openEditor()}
-              title={`用 ${editorName} 打开`}
-            >
-              {editorName}
-            </button>
-          )}
           {exists && (
             <button
               className="btn btn-ghost"

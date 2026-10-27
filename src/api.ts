@@ -6,6 +6,7 @@ export interface DiaryMeta {
   preview: string
   mtime: number
   empty: boolean
+  broken?: boolean
 }
 
 export interface Stats {
@@ -23,17 +24,19 @@ export interface Status {
   ok: boolean
   editorPath: string
   editorExists: boolean
-  detected: string | null
   diaryDir: string
   diaryDirExists: boolean
   privacyGateEnabled: boolean
-  hasPassword?: boolean
   hasSecurityAnswer?: boolean
+  idleLockMinutes?: number
+  reminderEnabled?: boolean
+  reminderTime?: string
 }
 
 declare global {
   interface Window {
     myDiary?: {
+      token?: string
       pickPath: (params: { mode: 'folder' | 'exe' | 'archive-save' | 'archive-open'; initial?: string }) =>
         Promise<{ ok: boolean; path: string | null }>
     }
@@ -50,10 +53,14 @@ async function req<T>(url: string, init?: RequestInit, timeoutMs?: number): Prom
 
   let res: Response
   try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    const token = window.myDiary?.token
+    // Electron 下服务只认本次启动的一次性令牌；纯浏览器开发时为空
+    if (token) headers['x-mydiary-token'] = token
     res = await fetch(url, {
-      headers: { 'Content-Type': 'application/json' },
-      signal: ctrl.signal,
       ...init,
+      headers: { ...headers, ...(init?.headers as Record<string, string> | undefined) },
+      signal: ctrl.signal,
     })
   } catch (e: unknown) {
     if (timer) clearTimeout(timer)
@@ -107,6 +114,9 @@ export const api = {
     privacyPassword?: string
     privacyGateEnabled?: boolean
     securityAnswer?: string
+    idleLockMinutes?: number
+    reminderEnabled?: boolean
+    reminderTime?: string
     unlockToken?: string
   }) => req<{ ok: boolean } & Record<string, unknown>>('/api/config', { method: 'POST', body: JSON.stringify(cfg) }),
   pickPath: (params: { mode: 'folder' | 'exe' | 'archive-save' | 'archive-open'; initial?: string }) => {
@@ -127,13 +137,6 @@ export const api = {
       '/api/unlock',
       { method: 'POST', body: JSON.stringify({ password }) },
     ),
-  privacyPassword: (unlockToken?: string) =>
-    req<{ ok: boolean; password: string }>(
-      '/api/privacy-password',
-      unlockToken
-        ? { headers: { 'x-unlock-token': unlockToken } }
-        : undefined,
-    ),
   securityQuestion: () =>
     req<{ ok: boolean; question: string; hasAnswer: boolean }>('/api/security-question'),
   verifySecurityAnswer: (answer: string) =>
@@ -151,6 +154,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ destination, password }),
     }, 0),
+  cleanEditTemp: () =>
+    req<{ ok: boolean; removed: number }>('/api/edit-temp/clean', { method: 'POST' }),
   importData: (source: string, password: string) =>
     req<{ ok: boolean; diaryCount: number; imageCount: number }>('/api/data-import', {
       method: 'POST',

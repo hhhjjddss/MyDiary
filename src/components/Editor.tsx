@@ -6,7 +6,7 @@ interface Props {
   date: string
   onClose: () => void
   onChanged: () => void
-  editorName: string // 配置的编辑器名（如 Typora / Obsidian），用于按钮文案
+  editorName: string // 配置的编辑器名（如 Typora / VS Code），用于按钮文案
 }
 
 type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
@@ -18,16 +18,22 @@ type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
 export function Editor({ date, onClose, onChanged, editorName }: Props) {
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [mode, setMode] = useState<'write' | 'preview'>('write')
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [uploading, setUploading] = useState(false)
+  const [opening, setOpening] = useState(false)
   const taRef = useRef<HTMLTextAreaElement>(null)
   const dirtyRef = useRef(false)
+  // 保存时以当前值为快照，回调里再对比 state，避免闭包拿到旧内容或误清脏标记
+  const contentRef = useRef('')
   const isToday = date === todayStr()
 
   // 加载内容
   useEffect(() => {
     let alive = true
+    setLoading(true)
+    setLoadError(null)
     api.diary(date).then(r => {
       if (!alive) return
       // 统一规整尾部空白为单个换行：
@@ -38,6 +44,7 @@ export function Editor({ date, onClose, onChanged, editorName }: Props) {
       c = c.replace(/\s+$/, '')
       if (c.length === 0) c = `# ${date}`
       c += '\n'
+      contentRef.current = c
       setContent(c)
       setLoading(false)
       // 光标定位到文末，并聚焦编辑区
@@ -47,26 +54,39 @@ export function Editor({ date, onClose, onChanged, editorName }: Props) {
         ta.focus()
         ta.setSelectionRange(c.length, c.length)
       })
+    }).catch((e: unknown) => {
+      if (!alive) return
+      setLoadError(e instanceof Error ? e.message : '无法读取这篇日记')
+      setLoading(false)
     })
     return () => { alive = false }
   }, [date])
 
   const update = useCallback((v: string) => {
+    contentRef.current = v
     setContent(v)
     dirtyRef.current = true
     setSaveState('dirty')
   }, [])
 
-  const save = useCallback(async () => {
+  const save = useCallback(async (): Promise<boolean> => {
+    const snapshot = contentRef.current
     setSaveState('saving')
     try {
-      await api.save(date, content)
-      dirtyRef.current = false
-      setSaveState('saved')
+      await api.save(date, snapshot)
+      // 保存期间又改过内容：保持脏标记，继续等下一轮自动保存
+      if (contentRef.current === snapshot) {
+        dirtyRef.current = false
+        setSaveState('saved')
+      } else {
+        setSaveState('dirty')
+      }
+      return true
     } catch {
       setSaveState('error')
+      return false
     }
-  }, [date, content])
+  }, [date])
 
   // 输入停 1.2 秒自动保存
   useEffect(() => {
@@ -77,11 +97,12 @@ export function Editor({ date, onClose, onChanged, editorName }: Props) {
 
   const close = useCallback(async () => {
     if (dirtyRef.current) {
-      try { await api.save(date, content) } catch {}
+      const ok = await save()
+      if (!ok && !window.confirm('日记保存失败，确定放弃本次修改并关闭吗？')) return
     }
     onChanged()
     onClose()
-  }, [date, content, onChanged, onClose])
+  }, [save, onChanged, onClose])
 
   // Ctrl+S 保存 / Esc 关闭
   useEffect(() => {
@@ -187,11 +208,25 @@ export function Editor({ date, onClose, onChanged, editorName }: Props) {
     }
   }
 
+  // 外部编辑器只拿到磁盘上的明文快照，先把当前改动落盘再交给它打开
   const openExternal = async () => {
+    if (opening) return
+    setOpening(true)
     try {
+      if (dirtyRef.current) {
+        const ok = await save()
+        if (!ok) {
+          window.alert('日记保存失败，未打开外部编辑器')
+          return
+        }
+      }
       await api.open(date)
-    } catch {
-      window.alert(`打开${editorName}失败，请检查本地服务是否运行`)
+      onChanged()
+      onClose()
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : `打开${editorName}失败`)
+    } finally {
+      setOpening(false)
     }
   }
 
@@ -271,6 +306,12 @@ export function Editor({ date, onClose, onChanged, editorName }: Props) {
 
         {loading ? (
           <div className="label-xs py-16 text-center">读取中…</div>
+        ) : loadError ? (
+          <div className="py-16 text-center">
+            <div className="label-xs" style={{ color: 'var(--danger)' }}>{loadError}</div>
+            <div className="label-xs mt-3">为避免覆盖内容，已停止编辑。</div>
+            <button className="btn btn-ghost mt-4" onClick={() => void close()}>关闭</button>
+          </div>
         ) : mode === 'write' ? (
           <>
             {/* 工具栏 */}
@@ -331,8 +372,13 @@ export function Editor({ date, onClose, onChanged, editorName }: Props) {
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <button className="btn btn-ghost" onClick={() => void openExternal()} title={`用 ${editorName} 打开这一天`}>
-              {editorName}
+            <button
+              className="btn btn-ghost"
+              disabled={opening}
+              onClick={() => void openExternal()}
+              title={`用 ${editorName} 打开这一天的明文临时文件`}
+            >
+              {opening ? '打开中…' : editorName}
             </button>
             <button className="btn btn-primary" onClick={() => void close()}>
               完成

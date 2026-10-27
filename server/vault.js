@@ -1,4 +1,4 @@
-import crypto from 'node:crypto'
+import crypto, { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import path from 'node:path'
@@ -17,6 +17,8 @@ export function loadMasterKey(keyFile) {
     if (raw.length === 32) return raw
     const hex = raw.toString('utf8').trim()
     if (/^[0-9a-fA-F]{64}$/.test(hex)) return Buffer.from(hex, 'hex')
+    // 已有密钥但无法解析：绝不静默重建，否则旧日记将永久无法解密
+    throw new Error('无法读取本机加密密钥（key.bin），为避免覆盖数据，已停止启动')
   }
   const key = crypto.randomBytes(32)
   if (keyFile) {
@@ -62,9 +64,15 @@ export async function writeEncryptedFile(key, filePath, data) {
   const plain = Buffer.isBuffer(data) ? data : Buffer.from(String(data), 'utf8')
   const blob = encryptBuffer(key, plain)
   await fsp.mkdir(path.dirname(filePath), { recursive: true })
-  const tmp = filePath + '.tmp'
-  await fsp.writeFile(tmp, blob)
-  await fsp.rename(tmp, filePath)
+  // 唯一临时名：并发写同一文件时不会互相截断
+  const tmp = `${filePath}.${randomUUID()}.tmp`
+  try {
+    await fsp.writeFile(tmp, blob, { mode: 0o600 })
+    await fsp.rename(tmp, filePath)
+  } catch (err) {
+    await fsp.rm(tmp, { force: true }).catch(() => {})
+    throw err
+  }
 }
 
 export async function readEncryptedFile(key, filePath) {
